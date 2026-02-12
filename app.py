@@ -40,13 +40,24 @@ st.markdown("""
         margin-bottom: 40px !important;
     }
 
-    div[data-baseweb="input"], [data-testid="stTextInput"] > div {
-        background-color: #eef2ef !important;
-        border: 2px solid #c8d6cc !important;
-        border-radius: 12px !important;
-        color: #1b3022 !important;
-        height: 65px !important;
-    }
+div[data-baseweb="input"] {
+    background-color: transparent !important;
+    border: 2px solid #c8d6cc !important;
+    border-radius: 12px !important;
+}
+
+div[data-baseweb="input"] input {
+    background-color: transparent !important;
+    color: #1b3022 !important;
+    font-size: 26px !important;
+    text-align: center !important;
+}
+
+div[data-baseweb="input"]:focus-within {
+    border: 2px solid #4f6d5a !important;
+    box-shadow: none !important;
+}
+
 
     input {
         background-color: transparent !important;
