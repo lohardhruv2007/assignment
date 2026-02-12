@@ -2,178 +2,151 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import os
-from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
+
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="Recruiter Portal", layout="wide")
+
+# ---------------- DATABASE INIT ----------------
+def init_db():
+    conn = sqlite3.connect("candidates.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS candidates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            score INTEGER
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 init_db()
 
-st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🌿", layout="wide")
-
-# ---------------- FULL CSS RESET ----------------
+# ---------------- GLOBAL CSS ----------------
 st.markdown("""
 <style>
 
-/* Hide Streamlit header */
-[data-testid="stHeader"], footer, #MainMenu {
-    display: none !important;
+/* Hide Streamlit Header */
+header, footer, #MainMenu {
+    visibility: hidden;
 }
 
 /* App background */
 .stApp {
-    background-color: #f3f7f0 !important;
-    font-family: 'Times New Roman', Times, serif !important;
+    background-color: #f3f7f0;
+    font-family: 'Times New Roman', serif;
 }
 
-/* Center everything */
+/* Center Content */
 .main .block-container {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-    height: 100vh !important;
-    max-width: 100% !important;
+    padding-top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
 
 /* Heading */
-.portal-heading {
-    font-size: 70px !important;
-    font-weight: 800 !important;
-    color: #1b3022 !important;
-    text-align: center !important;
-    margin-bottom: 60px !important;
+.title {
+    font-size: 60px;
+    font-weight: 800;
+    color: #1b3022;
+    margin-bottom: 50px;
 }
 
-/* ===== FORCE REMOVE NAVY BLUE ===== */
-
-/* Kill all BaseWeb dark backgrounds */
+/* REMOVE all Streamlit base layers */
 div[data-baseweb="input"],
 div[data-baseweb="base-input"] {
-    background: white !important;
-    background-color: white !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
-/* Outer Input Box */
+/* Text Input Container */
+[data-testid="stTextInput"] {
+    width: 650px !important;
+}
+
+/* Input Box */
 [data-testid="stTextInput"] > div {
-    background-color: white !important;
+    background: white !important;
     border: 3px solid #c8d6cc !important;
     border-radius: 18px !important;
-    width: 650px !important;
     height: 75px !important;
-    display: flex !important;
-    align-items: center !important;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
 }
 
-/* Actual Input Field */
+/* Actual Input */
 [data-testid="stTextInput"] input {
-    background-color: transparent !important;
-    color: #6fa88f !important;  /* pastel green typing text */
-    font-size: 28px !important;
-    text-align: center !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 26px !important;
+    color: #6fa88f !important;
+    text-align: center;
+    width: 100%;
 }
 
-/* Focus effect */
+/* Focus Effect */
 [data-testid="stTextInput"] > div:focus-within {
     border: 3px solid #4f6d5a !important;
-    box-shadow: 0 0 10px rgba(79,109,90,0.2) !important;
 }
 
 /* Button */
 .stButton > button {
-    width: 650px !important;
-    height: 80px !important;
-    background-color: #4f6d5a !important;
-    color: white !important;
-    font-size: 28px !important;
-    font-weight: bold !important;
-    border-radius: 18px !important;
-    border: none !important;
-    margin-top: 35px !important;
-}
-
-/* Sidebar text */
-[data-testid="stSidebar"] * {
-    font-size: 18px !important;
+    width: 650px;
+    height: 75px;
+    background-color: #4f6d5a;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 18px;
+    border: none;
+    margin-top: 30px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- SESSION ----------------
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-if 'page' not in st.session_state:
-    st.session_state['page'] = "Login"
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
 # ---------------- LOGIN PAGE ----------------
-if not st.session_state['logged_in']:
+if not st.session_state.logged_in:
 
-    st.markdown('<div class="portal-heading">Recruiter Portal</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title">Recruiter Portal</div>', unsafe_allow_html=True)
 
-    user = st.text_input("", placeholder="admin")
-    pwd = st.text_input("", type="password", placeholder="hr123")
+    username = st.text_input("", placeholder="admin")
+    password = st.text_input("", type="password", placeholder="hr123")
 
     if st.button("ENTER DASHBOARD"):
-        if user == "admin" and pwd == "hr123":
-            st.session_state['logged_in'] = True
-            st.session_state['page'] = "Screener"
+        if username == "admin" and password == "hr123":
+            st.session_state.logged_in = True
             st.rerun()
         else:
             st.error("Invalid Credentials")
 
-# ---------------- MAIN APP ----------------
+# ---------------- DASHBOARD ----------------
 else:
 
-    with st.sidebar:
-        st.markdown("<h2 style='color:#4f6d5a;'>🌿 TalentFlow AI</h2>", unsafe_allow_html=True)
+    st.markdown('<div class="title">Dashboard</div>', unsafe_allow_html=True)
 
-        if st.button("🔍 New Screening"):
-            st.session_state['page'] = "Screener"
-            st.rerun()
+    if st.button("Logout"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-        if st.button("📊 Talent Database"):
-            st.session_state['page'] = "Database"
-            st.rerun()
+    st.write("Welcome to Recruiter Dashboard ✅")
 
-        if st.button("🚪 Logout"):
-            st.session_state['logged_in'] = False
-            st.rerun()
+    conn = sqlite3.connect("candidates.db")
+    df = pd.read_sql_query("SELECT * FROM candidates", conn)
+    conn.close()
 
-    if st.session_state['page'] == "Screener":
-
-        st.markdown('<div class="portal-heading" style="font-size:50px;">Resume Screening</div>', unsafe_allow_html=True)
-
-        files = st.file_uploader("Upload Resumes", type="pdf", accept_multiple_files=True)
-
-        if files and st.button("START ANALYSIS"):
-            with st.status("Analyzing..."):
-                for f in files:
-                    text = extract_text_from_pdf(f)
-                    res = analyze_resume(text)
-                    save_candidate(
-                        f.name,
-                        res["score"],
-                        res["education"],
-                        res["notice_period"],
-                        ", ".join(res["skills"]),
-                        res["reason"]
-                    )
-            st.session_state['page'] = "Database"
-            st.rerun()
-
-    elif st.session_state['page'] == "Database":
-
-        st.markdown('<div class="portal-heading" style="font-size:50px;">Candidate Pool</div>', unsafe_allow_html=True)
-
-        conn = sqlite3.connect('candidates.db')
-        df = pd.read_sql_query("SELECT * FROM candidates", conn)
-
-        if not df.empty:
-            st.dataframe(df.sort_values(by="score", ascending=False), use_container_width=True)
-
-        if st.button("RESET DATABASE"):
-            if os.path.exists('candidates.db'):
-                os.remove('candidates.db')
-            st.rerun()
-
-        conn.close()
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("No candidates yet.")
