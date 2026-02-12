@@ -9,10 +9,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Completely disable sidebar
+# Remove sidebar completely
 st.sidebar.empty()
 
-# ---------------- DATABASE SETUP ----------------
+# ---------------- DATABASE ----------------
 def init_db():
     conn = sqlite3.connect("candidates.db")
     c = conn.cursor()
@@ -28,21 +28,16 @@ def init_db():
 
 init_db()
 
-# ---------------- CLEAN CSS ----------------
+# ---------------- CSS ----------------
 st.markdown("""
 <style>
-
-/* Remove top padding */
-.block-container {
-    padding-top: 3rem;
-}
 
 /* Background */
 .stApp {
     background-color: #f3f7f0;
 }
 
-/* Title style */
+/* Title */
 .title {
     text-align: center;
     font-size: 50px;
@@ -51,38 +46,38 @@ st.markdown("""
     color: #1b3022;
 }
 
-/* Remove blue background */
+/* Input container */
 div[data-baseweb="input"] {
     background-color: white !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
 }
 
-/* Remove default blue focus glow */
-input {
-    background-color: white !important;
-    box-shadow: none !important;
-    border: none !important;
-}
-
-/* Custom input border */
+/* Input field styling */
 [data-testid="stTextInput"] > div {
-    border: 2px solid #c8d6cc !important;
-    border-radius: 10px !important;
+    border: 2px solid #b7d8c0 !important;
+    border-radius: 12px !important;
 }
 
-/* On focus border */
+/* Pastel green text */
+[data-testid="stTextInput"] input {
+    color: #8fc7a5 !important;   /* Light pastel green */
+    font-size: 18px !important;
+}
+
+/* Remove blue focus */
 [data-testid="stTextInput"] > div:focus-within {
-    border: 2px solid #4f6d5a !important;
+    border: 2px solid #6fbf8f !important;
+    box-shadow: none !important;
 }
 
-/* Button style */
+/* Button */
 .stButton > button {
     width: 100%;
     height: 50px;
-    background-color: #4f6d5a;
+    background-color: #6fbf8f;
     color: white;
     font-size: 18px;
-    border-radius: 8px;
+    border-radius: 10px;
     border: none;
     margin-top: 15px;
 }
@@ -90,18 +85,18 @@ input {
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- SESSION STATE ----------------
+# ---------------- SESSION ----------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# ---------------- LOGIN PAGE ----------------
+# ---------------- LOGIN ----------------
 if not st.session_state.logged_in:
 
     st.markdown('<div class="title">Recruiter Portal</div>', unsafe_allow_html=True)
 
     username = st.text_input("Username")
 
-    # 🔴 NOT using type="password" → so NO eye icon
+    # No type="password" so no eye icon
     password = st.text_input("Password")
 
     if st.button("Login"):
