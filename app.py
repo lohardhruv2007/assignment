@@ -8,22 +8,22 @@ init_db()
 
 st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🌿", layout="wide")
 
-# ---------- FINAL CLEAN CSS ----------
+# ---------------- FULL CSS RESET ----------------
 st.markdown("""
 <style>
 
-/* Hide Streamlit default header */
+/* Hide Streamlit header */
 [data-testid="stHeader"], footer, #MainMenu {
     display: none !important;
 }
 
-/* App Background */
+/* App background */
 .stApp {
     background-color: #f3f7f0 !important;
     font-family: 'Times New Roman', Times, serif !important;
 }
 
-/* Center Content */
+/* Center everything */
 .main .block-container {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
@@ -41,27 +41,33 @@ st.markdown("""
     font-weight: 800 !important;
     color: #1b3022 !important;
     text-align: center !important;
-    margin-bottom: 50px !important;
+    margin-bottom: 60px !important;
 }
 
-/* BIG WHITE INPUT BOX */
-[data-testid="stTextInput"] {
-    width: 650px !important;
+/* ===== FORCE REMOVE NAVY BLUE ===== */
+
+/* Kill all BaseWeb dark backgrounds */
+div[data-baseweb="input"],
+div[data-baseweb="base-input"] {
+    background: white !important;
+    background-color: white !important;
 }
 
+/* Outer Input Box */
 [data-testid="stTextInput"] > div {
     background-color: white !important;
     border: 3px solid #c8d6cc !important;
     border-radius: 18px !important;
+    width: 650px !important;
     height: 75px !important;
     display: flex !important;
     align-items: center !important;
 }
 
-/* INPUT TEXT */
+/* Actual Input Field */
 [data-testid="stTextInput"] input {
-    background: transparent !important;
-    color: #6fa88f !important;  /* pastel green text */
+    background-color: transparent !important;
+    color: #6fa88f !important;  /* pastel green typing text */
     font-size: 28px !important;
     text-align: center !important;
 }
@@ -69,10 +75,10 @@ st.markdown("""
 /* Focus effect */
 [data-testid="stTextInput"] > div:focus-within {
     border: 3px solid #4f6d5a !important;
-    box-shadow: 0 0 12px rgba(79,109,90,0.2) !important;
+    box-shadow: 0 0 10px rgba(79,109,90,0.2) !important;
 }
 
-/* Big Button */
+/* Button */
 .stButton > button {
     width: 650px !important;
     height: 80px !important;
@@ -82,7 +88,7 @@ st.markdown("""
     font-weight: bold !important;
     border-radius: 18px !important;
     border: none !important;
-    margin-top: 30px !important;
+    margin-top: 35px !important;
 }
 
 /* Sidebar text */
@@ -93,13 +99,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- SESSION ----------
+# ---------------- SESSION ----------------
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'page' not in st.session_state:
     st.session_state['page'] = "Login"
 
-# ---------- LOGIN PAGE ----------
+# ---------------- LOGIN PAGE ----------------
 if not st.session_state['logged_in']:
 
     st.markdown('<div class="portal-heading">Recruiter Portal</div>', unsafe_allow_html=True)
@@ -115,7 +121,7 @@ if not st.session_state['logged_in']:
         else:
             st.error("Invalid Credentials")
 
-# ---------- MAIN APP ----------
+# ---------------- MAIN APP ----------------
 else:
 
     with st.sidebar:
