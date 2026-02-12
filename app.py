@@ -1,123 +1,157 @@
 import streamlit as st
-import pandas as pd
+import PyPDF2
+import re
 import sqlite3
-import os
-from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
+import pytesseract
+from pdf2image import convert_from_bytes
+import io
+from PIL import Image
 
-# Initialize
-init_db()
+# --- PAGE CONFIGURATION (Title & Icon) ---
+st.set_page_config(page_title="Resume Screener AI", page_icon="📄")
 
-st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🌿", layout="wide")
-
-# --- CUSTOM CSS: Pastel Green & Times New Roman ---
-st.markdown("""
-    <style>
-    /* Global Styles */
-    .main {
-        background: linear-gradient(135deg, #f0f4f1 0%, #d9e4dd 100%);
-        font-family: 'Times New Roman', Times, serif;
+# --- CUSTOM CSS FOR CREAM BACKGROUND ---
+# Streamlit me background color direct option nahi hota, CSS inject krna padta hai
+cream_css = """
+<style>
+    .stApp {
+        background-color: #FFFDD0;
     }
-    
-    /* Card Style */
-    .stmarkdown, .card, [data-testid="stExpander"] {
-        background-color: rgba(255, 255, 255, 0.9);
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0 8px 16px rgba(46, 125, 50, 0.1);
-        border: 1px solid #c8d6cc;
+    /* Text color fix for contrast */
+    h1, h2, h3, h4, h5, h6, p, div, label {
+        color: #333333 !important;
     }
-
-    /* Typography */
-    h1, h2, h3, p, span, div, label {
-        font-family: 'Times New Roman', Times, serif !important;
-        color: #2d3e33 !important;
-    }
-
-    /* Modern Button */
+    /* Button style */
     .stButton>button {
-        background-color: #4f6d5a;
+        background-color: #4CAF50;
         color: white !important;
         border-radius: 10px;
-        font-family: 'Times New Roman', Times, serif;
-        font-weight: bold;
-        transition: 0.3s;
-        border: none;
     }
-    .stButton>button:hover { background-color: #3a5142; color: #fff !important; }
+</style>
+"""
+st.markdown(cream_css, unsafe_allow_html=True)
 
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: #eef2ef;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# --- DATABASE SETUP ---
+def init_db():
+    conn = sqlite3.connect('candidates.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS candidates 
+                 (name TEXT, score INTEGER, education TEXT, skills TEXT, reason TEXT)''')
+    conn.commit()
+    conn.close()
 
-# Session States
-if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
-if 'page' not in st.session_state: st.session_state['page'] = "Login"
+def save_candidate(name, score, education, skills, reason):
+    conn = sqlite3.connect('candidates.db')
+    c = conn.cursor()
+    skills_str = ", ".join(skills) if isinstance(skills, list) else str(skills)
+    try:
+        c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", 
+                  (name, score, education, skills_str, reason))
+        conn.commit()
+    except Exception as e:
+        st.error(f"Database Error: {e}")
+    conn.close()
 
-# --- LOGIN ---
-if not st.session_state['logged_in']:
-    _, col2, _ = st.columns([1, 1.5, 1])
-    with col2:
-        st.title("💼 Recruiter Access")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        user = st.text_input("Username")
-        pwd = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if user == "admin" and pwd == "hr123":
-                st.session_state['logged_in'] = True
-                st.session_state['page'] = "Screener"
-                st.rerun()
-            else: st.error("Invalid Credentials")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# --- APP CONTENT ---
-else:
-    with st.sidebar:
-        st.header("🌿 TalentFlow AI")
-        if st.button("🔍 New Screening"): st.session_state['page'] = "Screener"; st.rerun()
-        if st.button("📊 Talent Database"): st.session_state['page'] = "Database"; st.rerun()
-        st.markdown("---")
-        if st.button("Logout"): st.session_state['logged_in'] = False; st.rerun()
-
-    if st.session_state['page'] == "Screener":
-        st.header("🔍 Intelligent Screening")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        files = st.file_uploader("Upload PDF Resumes", type="pdf", accept_multiple_files=True)
-        if files and st.button("Start AI Analysis"):
-            with st.status("Agent analyzing documents...", expanded=True) as s:
-                for f in files:
-                    text = extract_text_from_pdf(f)
-                    res = analyze_resume(text)
-                    save_candidate(f.name, res["score"], res["education"], res["notice_period"], ", ".join(res["skills"]), res["reason"])
-                s.update(label="Complete!", state="complete")
-            st.session_state['page'] = "Database"; st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    elif st.session_state['page'] == "Database":
-        st.header("📂 Analyzed Candidates")
-        conn = sqlite3.connect('candidates.db')
-        try:
-            df = pd.read_sql_query("SELECT * FROM candidates", conn)
-            if not df.empty:
-                # Metrics
-                c1, c2 = st.columns(2)
-                c1.metric("Total Resumes", len(df))
-                c2.metric("Top Score", f"{int(df['score'].max())}%")
+# --- TEXT EXTRACTION LOGIC ---
+def extract_text_from_pdf(uploaded_file):
+    text = ""
+    try:
+        # Streamlit file object ko direct read kar sakte hain
+        pdf_reader = PyPDF2.PdfReader(uploaded_file)
+        
+        # Read First 3 Pages
+        for page in pdf_reader.pages[:3]:
+            content = page.extract_text()
+            if content:
+                text += content + " "
+        
+        # OCR Fallback (Agar text kam hai)
+        if len(text.strip()) < 50:
+            st.warning("⚠️ Scanned PDF detected! Applying OCR (this might take a few seconds)...")
+            uploaded_file.seek(0)  # File pointer reset
+            # Bytes me convert karke OCR lagayenge
+            images = convert_from_bytes(uploaded_file.read())
+            for img in images[:2]: # Sirf pehle 2 page OCR ke liye (speed ke liye)
+                text += pytesseract.image_to_string(img)
                 
-                st.dataframe(df.sort_values(by="score", ascending=False), use_container_width=True)
-                
-                st.subheader("🤖 AI Rationalization")
-                for _, row in df.iterrows():
-                    with st.expander(f"Report: {row['name']}"):
-                        st.write(f"**Decision:** {row['reason']}")
-                        st.progress(row['score'] / 100)
-            else: st.info("No data yet.")
-        except: st.error("Database error. Please Reset.")
+        return re.sub(r'\s+', ' ', text).strip()
+    except Exception as e:
+        st.error(f"Error reading PDF: {e}")
+        return ""
 
-        if st.button("🗑️ Reset Database"):
-            conn.close()
-            if os.path.exists('candidates.db'): os.remove('candidates.db')
-            st.rerun()
-        conn.close()
+# --- SCORING LOGIC ---
+def analyze_resume(text):
+    res = {"education": "Other", "skills": [], "score": 25, "reason": ""}
+    
+    if not text:
+        res["reason"] = "Rejected: Document unreadable."
+        return res
+
+    # Education
+    has_degree = False
+    if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor\s*of\s*Technology|Engineering|Techno India|B\.E\.|M\.C\.A', text, re.I):
+        res["education"] = "Technical Degree"
+        res["score"] += 45
+        has_degree = True
+
+    # Skills
+    skill_list = ["Python", "Java", "PHP", "MySQL", "JavaScript", "HTML", "CSS", "Node", "Git", "React", "AWS", "Machine Learning"]
+    found_skills = []
+    for skill in skill_list:
+        if re.search(r'\b' + re.escape(skill) + r'\b', text, re.I):
+            found_skills.append(skill)
+            res["score"] += 5
+    
+    res["skills"] = list(set(found_skills)) # Remove duplicates
+    res["score"] = min(res["score"], 100)
+
+    # Decision
+    if res["score"] >= 70:
+        res["reason"] = "Selected: Strong Profile"
+    elif res["score"] >= 40:
+        res["reason"] = "Waitlist: Average Profile"
+    else:
+        res["reason"] = "Rejected: Low Match"
+    
+    return res
+
+# --- MAIN APP UI ---
+init_db()
+
+st.title("📄 AI Resume Screener")
+st.markdown("**Upload a Resume (PDF) to check eligibility instantly.**")
+
+uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+
+if uploaded_file is not None:
+    if st.button("Analyze Resume"):
+        with st.spinner("Analyzing... Please wait..."):
+            # Process
+            text = extract_text_from_pdf(uploaded_file)
+            result = analyze_resume(text)
+            
+            # Save to DB
+            save_candidate(uploaded_file.name, result['score'], result['education'], result['skills'], result['reason'])
+            
+            # Display Result
+            st.divider()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric(label="Score", value=f"{result['score']}/100")
+            with col2:
+                status_color = "green" if result['score'] >= 70 else "orange" if result['score'] >= 40 else "red"
+                st.markdown(f"### Status: :{status_color}[{result['reason']}]")
+            
+            st.subheader("Details Found:")
+            st.write(f"**Education:** {result['education']}")
+            st.write(f"**Skills:** {', '.join(result['skills']) if result['skills'] else 'None detected'}")
+            
+            st.success("✅ Candidate saved to database successfully!")
+
+# Optional: Show Database Data
+if st.checkbox("Show All Candidates Data"):
+    conn = sqlite3.connect('candidates.db')
+    df = pd.read_sql_query("SELECT * FROM candidates", conn)
+    st.dataframe(df)
+    conn.close()
