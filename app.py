@@ -38,37 +38,41 @@ st.markdown("""
     .resume-box { background-color: #FFFFFF; border: 1px solid #CCCCCC; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #333333 !important; height: 250px; overflow-y: scroll; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); white-space: pre-wrap; }
     .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
 
-    /* --- UNIFIED CHAT CARD STYLING --- */
+    /* --- PROFESSIONAL CHAT WINDOW STYLING --- */
     .chat-card {
         background-color: #FFFFFF;
         border-radius: 12px;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
-        padding: 20px;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
         margin-top: 20px;
         border: 1px solid #ddd;
+        overflow: hidden; /* Ensures header stays inside rounded corners */
     }
     
+    /* The "White Bar" is now a Dark Title Bar */
     .chat-header {
+        background-color: #262730; /* Dark Grey like Drag&Drop box */
+        color: #FFFFFF !important;
+        padding: 15px 20px;
         font-size: 18px;
         font-weight: bold;
-        color: #333 !important;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #FF4B4B;
-        padding-bottom: 5px;
-        display: inline-block;
+        border-bottom: 3px solid #FF4B4B; /* Red Accent Line */
+    }
+
+    .chat-content {
+        padding: 20px;
     }
 
     .chat-history-area {
-        background-color: #F9F9F9;
+        background-color: #F8F9FA;
         border-radius: 8px;
-        padding: 10px;
-        max-height: 250px;
+        padding: 15px;
+        max-height: 300px;
         overflow-y: auto;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid #eee;
     }
 
-    /* Remove Streamlit Form Border to blend in */
+    /* Remove Streamlit Form Border */
     [data-testid="stForm"] {
         border: none;
         padding: 0;
@@ -246,16 +250,19 @@ def main_tool():
         with st.expander("📄 View Raw Text"):
             st.markdown(f"<div class='resume-box'>{st.session_state['resume_text']}</div>", unsafe_allow_html=True)
 
-        # --- UNIFIED CHAT CARD (PROFESSIONAL BOX) ---
+        # --- UNIFIED CHAT WINDOW (FIXED TITLE BAR) ---
         st.divider()
         
         # Start Card Container
         st.markdown('<div class="chat-card">', unsafe_allow_html=True)
         
-        # 1. Heading
-        st.markdown('<div class="chat-header">💬 Chat about this Candidate</div>', unsafe_allow_html=True)
+        # 1. Title Bar (Replaces the empty white space)
+        st.markdown('<div class="chat-header">🤖 AI Assistant - Ask about this Candidate</div>', unsafe_allow_html=True)
         
-        # 2. Chat History Area (Inside the card)
+        # Start Content Area
+        st.markdown('<div class="chat-content">', unsafe_allow_html=True)
+
+        # 2. Chat History Area
         if st.session_state['chat_history']:
             st.markdown('<div class="chat-history-area">', unsafe_allow_html=True)
             for msg in st.session_state['chat_history']:
@@ -268,12 +275,14 @@ def main_tool():
                 </div>
                 """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("Start chatting below! Ask about skills, experience, or reasons for selection.")
         
-        # 3. Input Form (Integrated inside the same card)
+        # 3. Input Form
         with st.form(key='chat_form', clear_on_submit=True):
             c_in, c_btn = st.columns([6, 1])
             with c_in:
-                user_input = st.text_input("Message", placeholder="Ask something...", label_visibility="collapsed")
+                user_input = st.text_input("Message", placeholder="Type your question here...", label_visibility="collapsed")
             with c_btn:
                 submit_btn = st.form_submit_button("Send ➤")
             
@@ -298,8 +307,8 @@ def main_tool():
                 st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
                 st.rerun()
 
-        # End Card Container
-        st.markdown('</div>', unsafe_allow_html=True)
+        # End Content & Card
+        st.markdown('</div></div>', unsafe_allow_html=True)
 
 
     # --- DATABASE LIST ---
