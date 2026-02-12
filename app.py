@@ -7,10 +7,10 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import io
 
-# --- 1. PAGE CONFIG & COLOR SETTINGS ---
+# --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# Custom CSS: Cream Background + FORCE ALL TEXT BLACK
+# --- CUSTOM CSS (SMART COLOR ADJUSTMENT) ---
 st.markdown("""
     <style>
     /* 1. Main Background Cream */
@@ -18,42 +18,49 @@ st.markdown("""
         background-color: #FFFDD0;
     }
     
-    /* 2. Force ALL Text Elements to Black */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, a, .stMarkdown, .stText {
+    /* 2. General Page Text -> BLACK */
+    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div {
         color: #000000 !important;
     }
     
-    /* 3. Metric/Score Numbers to Black */
+    /* 3. METRICS & TABLES -> BLACK */
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
         color: #000000 !important;
     }
-    
-    /* 4. Input Fields Text to Black */
-    .stTextInput > div > div > input {
-        color: #000000 !important;
-    }
-    
-    /* 5. Dataframe/Table Text to Black */
     .dataframe {
         color: #000000 !important;
     }
-    
-    /* 6. Success/Error/Warning Messages Text to Black */
-    .stAlert div {
-        color: #000000 !important;
-    }
 
-    /* 7. Button Style (Red Button with White Text - Exception for better look) */
+    /* 4. FIX: FILE UPLOADER (Drag & Drop Area) */
+    /* Is area ka text WHITE karenge taaki dark background pe dikhe */
+    [data-testid="stFileUploader"] {
+        background-color: #262730; /* Dark background ensure karein */
+        border-radius: 10px;
+        padding: 10px;
+    }
+    [data-testid="stFileUploader"] span, 
+    [data-testid="stFileUploader"] small, 
+    [data-testid="stFileUploader"] div {
+        color: #FFFFFF !important; /* TEXT WHITE */
+    }
+    
+    /* 5. BUTTONS -> Red Background, White Text */
     .stButton>button {
         background-color: #FF4B4B;
-        color: white !important; /* Button text white hi achha lagta hai */
+        color: white !important;
         border-radius: 8px;
         border: none;
+        font-weight: bold;
+    }
+    
+    /* 6. Success/Error Messages Text -> BLACK (for readability on colored box) */
+    .stAlert div {
+        color: #000000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ROBUST DATABASE FUNCTIONS ---
+# --- 2. DATABASE FUNCTIONS ---
 def init_db():
     conn = sqlite3.connect('candidates.db')
     c = conn.cursor()
@@ -63,7 +70,7 @@ def init_db():
     if c.fetchone()[0] == 1:
         c.execute('PRAGMA table_info(candidates)')
         columns = c.fetchall()
-        if len(columns) != 5: # Purana version fix
+        if len(columns) != 5:
             c.execute('DROP TABLE candidates')
             conn.commit()
             
@@ -160,6 +167,7 @@ init_db()
 st.title("📄 AI Resume Screener")
 st.markdown("### Upload Resume to Check Eligibility")
 
+# File Uploader (CSS will make this text White)
 uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
 if uploaded_file is not None:
@@ -177,7 +185,7 @@ if uploaded_file is not None:
         col2.metric("Education", "Tech" if "Tech" in result['education'] else "Other")
         col3.metric("Skills Found", len(result['skills']))
         
-        # Status Box (Text force black via CSS)
+        # Status
         if "Selected" in result['reason']:
             st.success(f"🎉 {result['reason']}")
         elif "Waitlist" in result['reason']:
