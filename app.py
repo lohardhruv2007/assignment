@@ -10,18 +10,21 @@ import io
 # --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS ---
+# --- CUSTOM CSS (Global + Chat Styling) ---
 st.markdown("""
     <style>
     /* MAIN PAGE */
     .stApp { background-color: #FFFDD0; }
     
-    /* TEXT COLORS */
+    /* TEXT COLORS -> BLACK */
     h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div { color: #000000 !important; }
     
-    /* INPUT FIELDS */
-    .stTextInput > div > div > input { color: #000000 !important; background-color: #FFFFFF !important; }
-    .stChatInput textarea { background-color: #FFFFFF !important; color: #000000 !important; }
+    /* INPUT FIELDS (Standard) */
+    .stTextInput > div > div > input { 
+        color: #000000 !important; 
+        background-color: #FFFFFF !important; 
+        border: 1px solid #ccc;
+    }
 
     /* DRAG & DROP AREA */
     [data-testid="stFileUploader"] { background-color: #262730; border-radius: 10px; padding: 10px; }
@@ -34,13 +37,34 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #E6D9B8; border-right: 1px solid #C4B490; }
     [data-testid="stSidebar"] * { color: #2C2C2C !important; }
 
-    /* CARDS */
+    /* INFO CARDS */
     .info-box { background-color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 5px solid #FF4B4B; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
     .resume-box { background-color: #FFFFFF; border: 1px solid #CCCCCC; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #333333 !important; height: 250px; overflow-y: scroll; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); white-space: pre-wrap; }
-    .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
     
-    /* METRICS */
-    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: #000000 !important; }
+    /* CANDIDATE CARDS */
+    .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
+
+    /* --- NEW PROFESSIONAL CHAT UI --- */
+    .chat-container {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        margin-top: 10px;
+        border: 1px solid #E0E0E0;
+    }
+    /* Messages area */
+    .chat-history {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        padding-right: 10px;
+    }
+    /* Input area override to look integrated */
+    [data-testid="stForm"] {
+        border: none;
+        padding: 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,7 +96,7 @@ def main_tool():
         st.markdown("---")
         if st.button("Logout"):
             st.session_state['logged_in'] = False
-            st.session_state['analysis_result'] = None # Clear data on logout
+            st.session_state['analysis_result'] = None
             st.session_state['chat_history'] = []
             st.rerun()
         st.markdown("---")
@@ -114,7 +138,7 @@ def main_tool():
         conn.commit()
         conn.close()
 
-    # --- PDF & ANALYZE ---
+    # --- TEXT EXTRACTION ---
     def extract_text_from_pdf(uploaded_file):
         text = ""
         try:
@@ -130,6 +154,7 @@ def main_tool():
             return re.sub(r'\s+', ' ', text).strip()
         except: return ""
 
+    # --- ANALYSIS LOGIC ---
     def analyze_resume(text):
         res = {"education": "Unknown", "skills": [], "score": 25, "reason": "", "10th": "Not Found", "12th": "Not Found"}
         if not text:
@@ -174,23 +199,20 @@ def main_tool():
 
     uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
-    # 1. ANALYZE BUTTON
     if uploaded_file is not None:
         if st.button("Analyze Resume Now"):
             text = extract_text_from_pdf(uploaded_file)
             result = analyze_resume(text)
             
-            # Save result to Session State (Memory) so it persists during chat
             st.session_state['analysis_result'] = result
             st.session_state['resume_text'] = text
             st.session_state['file_name'] = uploaded_file.name
-            st.session_state['chat_history'] = [] # Clear old chat
+            st.session_state['chat_history'] = [] 
             
-            # Save to Database
             edu_full = f"{result['education']} | 10th: {result['10th']} | 12th: {result['12th']}"
             save_candidate(uploaded_file.name, result['score'], edu_full, result['skills'], result['reason'])
 
-    # 2. SHOW RESULTS (If analysis exists in memory)
+    # --- RESULTS SECTION ---
     if st.session_state['analysis_result']:
         res = st.session_state['analysis_result']
         name = st.session_state['file_name']
@@ -216,44 +238,52 @@ def main_tool():
         with st.expander("📄 View Raw Text"):
             st.markdown(f"<div class='resume-box'>{st.session_state['resume_text']}</div>", unsafe_allow_html=True)
 
-        # --- 3. CHATBOT SECTION ---
+        # --- NEW INLINE CHATBOT SECTION ---
         st.divider()
         st.markdown("### 💬 Chat with this Candidate Data")
         
-        # Display Chat History
+        # Professional Chat Container (White Box)
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        
+        # 1. Show History (Inside the box)
         for msg in st.session_state['chat_history']:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
-
-        # Chat Input
-        if prompt := st.chat_input("Ask something (e.g., 'What are the skills?', 'Why rejected?')..."):
-            # User Message
-            st.session_state['chat_history'].append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # --- BOT LOGIC (Smart Rule-Based) ---
-            prompt_lower = prompt.lower()
-            bot_reply = "I didn't understand. Try asking about **Score, Skills, Education, or Reason**."
+        
+        # 2. Input Form (Inline - No floating bar)
+        with st.form(key='chat_form', clear_on_submit=True):
+            col_input, col_btn = st.columns([6, 1])
+            with col_input:
+                user_input = st.text_input("Ask a question:", placeholder="e.g. Why was this candidate rejected?", label_visibility="collapsed")
+            with col_btn:
+                submit_btn = st.form_submit_button("Send ➤")
             
-            if "score" in prompt_lower or "marks" in prompt_lower:
-                bot_reply = f"The candidate scored **{res['score']}/100** based on our criteria."
-            elif "skill" in prompt_lower or "technology" in prompt_lower:
-                bot_reply = f"The technical skills found are: **{', '.join(res['skills'])}**."
-            elif "education" in prompt_lower or "degree" in prompt_lower or "college" in prompt_lower:
-                bot_reply = f"Education: **{res['education']}**.\nMarks - 10th: {res['10th']}, 12th: {res['12th']}."
-            elif "reason" in prompt_lower or "status" in prompt_lower or "reject" in prompt_lower or "select" in prompt_lower:
-                bot_reply = f"Current Status: **{res['reason']}**."
-            elif "email" in prompt_lower or "contact" in prompt_lower:
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+', st.session_state['resume_text'])
-                bot_reply = f"Found Email: **{email_match.group(0)}**" if email_match else "No email address found in the text."
-            
-            # Assistant Message
-            st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
-            with st.chat_message("assistant"):
-                st.markdown(bot_reply)
+            if submit_btn and user_input:
+                # Add User Message
+                st.session_state['chat_history'].append({"role": "user", "content": user_input})
+                
+                # Logic
+                prompt_lower = user_input.lower()
+                bot_reply = "I didn't understand. Try asking about Score, Skills, or Education."
+                if "score" in prompt_lower or "marks" in prompt_lower:
+                    bot_reply = f"The candidate scored **{res['score']}/100**."
+                elif "skill" in prompt_lower:
+                    bot_reply = f"Skills found: **{', '.join(res['skills'])}**."
+                elif "education" in prompt_lower or "degree" in prompt_lower:
+                    bot_reply = f"Education: **{res['education']}** (10th: {res['10th']}, 12th: {res['12th']})."
+                elif "reason" in prompt_lower or "status" in prompt_lower:
+                    bot_reply = f"Status: **{res['reason']}**."
+                elif "email" in prompt_lower:
+                    email_match = re.search(r'[\w\.-]+@[\w\.-]+', st.session_state['resume_text'])
+                    bot_reply = f"Email: **{email_match.group(0)}**" if email_match else "No email found."
+                
+                # Add Bot Message
+                st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
+                st.rerun() # Refresh to show new message immediately
+        
+        st.markdown('</div>', unsafe_allow_html=True) # End chat container
 
-    # --- 4. HR DATABASE LIST ---
+    # --- DATABASE LIST ---
     st.divider()
     st.markdown("### 🗂️ Candidate Database")
     if st.checkbox("Show Candidate Management List"):
