@@ -8,7 +8,8 @@ from pdf2image import convert_from_bytes
 import io
 
 # --- 1. PAGE CONFIG ---
-st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
+st.set_page_config(page_title="Mufat ka AI naam mera, par kaam bada hi tight,
+Resume agar strong hua, to job lagwa du overnight.", page_icon="🫡", layout="centered")
 
 # --- CUSTOM CSS ---
 st.markdown("""
