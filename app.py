@@ -7,24 +7,20 @@ import pytesseract
 from pdf2image import convert_from_bytes
 import io
 
-# --- 1. PAGE CONFIG & DESIGN SETTINGS ---
+# --- 1. PAGE CONFIG ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS (Global + Chat Styling) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     /* MAIN PAGE */
     .stApp { background-color: #FFFDD0; }
     
-    /* TEXT COLORS -> BLACK */
+    /* TEXT COLORS */
     h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div { color: #000000 !important; }
     
-    /* INPUT FIELDS (Standard) */
-    .stTextInput > div > div > input { 
-        color: #000000 !important; 
-        background-color: #FFFFFF !important; 
-        border: 1px solid #ccc;
-    }
+    /* INPUT FIELDS */
+    .stTextInput > div > div > input { color: #000000 !important; background-color: #FFFFFF !important; border: 1px solid #ccc; }
 
     /* DRAG & DROP AREA */
     [data-testid="stFileUploader"] { background-color: #262730; border-radius: 10px; padding: 10px; }
@@ -40,30 +36,24 @@ st.markdown("""
     /* INFO CARDS */
     .info-box { background-color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 5px solid #FF4B4B; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
     .resume-box { background-color: #FFFFFF; border: 1px solid #CCCCCC; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #333333 !important; height: 250px; overflow-y: scroll; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); white-space: pre-wrap; }
-    
-    /* CANDIDATE CARDS */
     .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
 
-    /* --- NEW PROFESSIONAL CHAT UI --- */
+    /* --- CHAT CONTAINER STYLING --- */
     .chat-container {
         background-color: #FFFFFF;
         border-radius: 10px;
         padding: 20px;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-        margin-top: 10px;
+        margin-top: 20px;
         border: 1px solid #E0E0E0;
     }
-    /* Messages area */
-    .chat-history {
-        max-height: 300px;
-        overflow-y: auto;
+    .chat-header {
+        font-size: 20px;
+        font-weight: bold;
+        color: #333;
         margin-bottom: 15px;
-        padding-right: 10px;
-    }
-    /* Input area override to look integrated */
-    [data-testid="stForm"] {
-        border: none;
-        padding: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -238,28 +228,29 @@ def main_tool():
         with st.expander("📄 View Raw Text"):
             st.markdown(f"<div class='resume-box'>{st.session_state['resume_text']}</div>", unsafe_allow_html=True)
 
-        # --- NEW INLINE CHATBOT SECTION ---
+        # --- CHATBOT SECTION (GAP FIXED) ---
         st.divider()
-        st.markdown("### 💬 Chat with this Candidate Data")
         
-        # Professional Chat Container (White Box)
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        # Start of White Box Container (Includes Header inside)
+        st.markdown("""
+        <div class="chat-container">
+            <div class="chat-header">💬 Chat with this Candidate Data</div>
+        """, unsafe_allow_html=True)
         
-        # 1. Show History (Inside the box)
+        # 1. Show History
         for msg in st.session_state['chat_history']:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
         
-        # 2. Input Form (Inline - No floating bar)
+        # 2. Input Form
         with st.form(key='chat_form', clear_on_submit=True):
             col_input, col_btn = st.columns([6, 1])
             with col_input:
-                user_input = st.text_input("Ask a question:", placeholder="e.g. Why was this candidate rejected?", label_visibility="collapsed")
+                user_input = st.text_input("Message", placeholder="Ask about skills, score, etc...", label_visibility="collapsed")
             with col_btn:
-                submit_btn = st.form_submit_button("Send ➤")
+                submit_btn = st.form_submit_button("Send")
             
             if submit_btn and user_input:
-                # Add User Message
                 st.session_state['chat_history'].append({"role": "user", "content": user_input})
                 
                 # Logic
@@ -277,11 +268,11 @@ def main_tool():
                     email_match = re.search(r'[\w\.-]+@[\w\.-]+', st.session_state['resume_text'])
                     bot_reply = f"Email: **{email_match.group(0)}**" if email_match else "No email found."
                 
-                # Add Bot Message
                 st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
-                st.rerun() # Refresh to show new message immediately
+                st.rerun()
         
-        st.markdown('</div>', unsafe_allow_html=True) # End chat container
+        # End of Container
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # --- DATABASE LIST ---
     st.divider()
