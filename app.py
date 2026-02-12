@@ -10,9 +10,10 @@ import io
 # --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS (Global Styling) ---
+# --- CUSTOM CSS (Global + Sidebar Styling) ---
 st.markdown("""
     <style>
+    /* --- MAIN PAGE STYLING --- */
     /* 1. Main Background Cream */
     .stApp {
         background-color: #FFFDD0;
@@ -29,7 +30,7 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
 
-    /* 4. DRAG & DROP AREA (Dark + White Text) */
+    /* 4. DRAG & DROP AREA */
     [data-testid="stFileUploader"] {
         background-color: #262730; 
         border-radius: 10px;
@@ -41,7 +42,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     
-    /* 5. BUTTONS */
+    /* 5. BUTTONS (Red with White Text) */
     .stButton>button {
         background-color: #FF4B4B;
         color: white !important;
@@ -50,7 +51,25 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* 6. INFO CARDS */
+    /* --- SIDEBAR STYLING (NEW) --- */
+    /* Sidebar Background -> Darker Beige (Related to Cream but distinct) */
+    [data-testid="stSidebar"] {
+        background-color: #E6D9B8; /* Darker than main page */
+        border-right: 1px solid #C4B490; /* Border separation */
+    }
+    
+    /* Sidebar Text Elements */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label {
+        color: #2C2C2C !important; /* Dark Grey for sidebar text */
+    }
+
+    /* --- RESULT BOX STYLING --- */
+    /* Info Cards */
     .info-box {
         background-color: #FFFFFF;
         padding: 15px;
@@ -60,7 +79,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
-    /* 7. RAW TEXT BOX */
+    /* Raw Text Box */
     .resume-box {
         background-color: #FFFFFF;
         border: 1px solid #CCCCCC;
@@ -73,6 +92,17 @@ st.markdown("""
         overflow-y: scroll;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
         white-space: pre-wrap;
+    }
+    
+    /* Metrics & Table Colors */
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        color: #000000 !important;
+    }
+    .dataframe {
+        color: #000000 !important;
+    }
+    .stAlert div {
+        color: #000000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -92,21 +122,27 @@ def login_page():
         password = st.text_input("Password", type="password")
         
         if st.button("Login"):
-            # --- SET PASSWORD HERE ---
             if username == "admin" and password == "admin123":
                 st.session_state['logged_in'] = True
-                st.rerun() # Refresh app to show main tool
+                st.rerun()
             else:
                 st.error("❌ Invalid Username or Password")
 
-# --- 4. MAIN APP LOGIC (Only accessible after login) ---
+# --- 4. MAIN APP LOGIC ---
 def main_tool():
-    # Logout Button in Sidebar
+    # --- SIDEBAR CONTENT ---
     with st.sidebar:
-        st.write(f"Logged in as: **HR Admin**")
+        st.title("Admin Panel")
+        st.write("Welcome, HR Admin")
+        st.markdown("---") # Line separator
+        
+        # Logout Button
         if st.button("Logout"):
             st.session_state['logged_in'] = False
             st.rerun()
+            
+        st.markdown("---")
+        st.info("ℹ️ Note: Use the main area to upload and analyze resumes.")
 
     # --- DATABASE FUNCTIONS ---
     def init_db():
@@ -160,14 +196,14 @@ def main_tool():
             st.error(f"Error parsing PDF: {e}")
             return ""
 
-    # --- SCORING & PARSING LOGIC ---
+    # --- SCORING & PARSING ---
     def analyze_resume(text):
         res = {"education": "Unknown", "skills": [], "score": 25, "reason": "", "10th": "Not Found", "12th": "Not Found"}
         if not text:
             res["reason"] = "Rejected: File unreadable."
             return res
 
-        # Education Check
+        # Education
         has_degree = False
         if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor\s*of\s*Technology|Engineering|B\.E\.|M\.C\.A|B\.C\.A', text, re.I):
             res["education"] = "B.Tech/BE/MCA"
@@ -177,18 +213,17 @@ def main_tool():
             res["education"] = "B.Sc/M.Sc"
             res["score"] += 30
 
-        # Marks Check (10th/12th)
+        # Marks
         match_10 = re.search(r'(?:10th|Class X|SSC|Matric|High School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
         if match_10:
             res["10th"] = match_10.group(1)
             res["score"] += 2
-
         match_12 = re.search(r'(?:12th|Class XII|HSC|Intermediate|Senior School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
         if match_12:
             res["12th"] = match_12.group(1)
             res["score"] += 2
 
-        # Skills Check
+        # Skills
         skill_list = ["Python", "Java", "C\+\+", "SQL", "MySQL", "JavaScript", "HTML", "CSS", "React", "Node", "AWS", "Git", "Machine Learning", "Excel"]
         found_skills = []
         for skill in skill_list:
@@ -227,7 +262,6 @@ def main_tool():
             text = extract_text_from_pdf(uploaded_file)
             result = analyze_resume(text)
             
-            # Save to DB
             edu_full_text = f"{result['education']} | 10th: {result['10th']} | 12th: {result['12th']}"
             save_candidate(uploaded_file.name, result['score'], edu_full_text, result['skills'], result['reason'])
             
@@ -242,7 +276,7 @@ def main_tool():
             
             st.divider()
 
-            # Education Boxes
+            # Info Boxes
             st.markdown("#### 🎓 Education & Marks Details")
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -252,11 +286,9 @@ def main_tool():
             with c3:
                 st.markdown(f"<div class='info-box'><b>12th / HSC</b><br>{result['12th']}</div>", unsafe_allow_html=True)
 
-            # Skills
             st.markdown("#### 🛠️ Technical Skills Detected")
             st.markdown(f"<div class='info-box'>{', '.join(result['skills']) if result['skills'] else 'No specific skills detected.'}</div>", unsafe_allow_html=True)
 
-            # Raw Text
             with st.expander("📄 View Extracted Content (Raw Text)"):
                 st.markdown(f"<div class='resume-box'>{text}</div>", unsafe_allow_html=True)
 
