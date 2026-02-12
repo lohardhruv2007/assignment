@@ -10,123 +10,73 @@ import io
 # --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS (Global + Sidebar + Candidate Card Styling) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
-    /* --- MAIN PAGE STYLING --- */
-    .stApp {
-        background-color: #FFFDD0;
-    }
+    /* MAIN PAGE */
+    .stApp { background-color: #FFFDD0; }
     
-    /* Text Elements -> BLACK */
-    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div {
-        color: #000000 !important;
-    }
+    /* TEXT COLORS */
+    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div { color: #000000 !important; }
     
-    /* Input Fields */
-    .stTextInput > div > div > input {
-        color: #000000 !important;
-        background-color: #FFFFFF !important;
-    }
+    /* INPUT FIELDS */
+    .stTextInput > div > div > input { color: #000000 !important; background-color: #FFFFFF !important; }
+    .stChatInput textarea { background-color: #FFFFFF !important; color: #000000 !important; }
 
-    /* File Uploader */
-    [data-testid="stFileUploader"] {
-        background-color: #262730; 
-        border-radius: 10px;
-        padding: 10px;
-    }
-    [data-testid="stFileUploader"] span, 
-    [data-testid="stFileUploader"] small, 
-    [data-testid="stFileUploader"] div {
-        color: #FFFFFF !important;
-    }
+    /* DRAG & DROP AREA */
+    [data-testid="stFileUploader"] { background-color: #262730; border-radius: 10px; padding: 10px; }
+    [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small, [data-testid="stFileUploader"] div { color: #FFFFFF !important; }
     
-    /* Buttons */
-    .stButton>button {
-        background-color: #FF4B4B;
-        color: white !important;
-        border-radius: 8px;
-        border: none;
-        font-weight: bold;
-    }
+    /* BUTTONS */
+    .stButton>button { background-color: #FF4B4B; color: white !important; border-radius: 8px; border: none; font-weight: bold; }
     
-    /* --- SIDEBAR STYLING --- */
-    [data-testid="stSidebar"] {
-        background-color: #E6D9B8;
-        border-right: 1px solid #C4B490;
-    }
-    [data-testid="stSidebar"] * {
-        color: #2C2C2C !important;
-    }
+    /* SIDEBAR */
+    [data-testid="stSidebar"] { background-color: #E6D9B8; border-right: 1px solid #C4B490; }
+    [data-testid="stSidebar"] * { color: #2C2C2C !important; }
 
-    /* --- RESULT BOX STYLING --- */
-    .info-box {
-        background-color: #FFFFFF;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 5px solid #FF4B4B;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
-    }
-    .resume-box {
-        background-color: #FFFFFF;
-        border: 1px solid #CCCCCC;
-        padding: 15px;
-        border-radius: 5px;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 14px;
-        color: #333333 !important;
-        height: 250px;
-        overflow-y: scroll;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-        white-space: pre-wrap;
-    }
+    /* CARDS */
+    .info-box { background-color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 5px solid #FF4B4B; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
+    .resume-box { background-color: #FFFFFF; border: 1px solid #CCCCCC; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #333333 !important; height: 250px; overflow-y: scroll; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); white-space: pre-wrap; }
+    .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
     
-    /* --- NEW: CANDIDATE LIST CARD STYLING --- */
-    .candidate-card {
-        background-color: #FFFFFF;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-        margin-bottom: 15px;
-        border-left: 8px solid #333; /* Default Border */
-    }
+    /* METRICS */
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: #000000 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 2. SESSION STATE ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
+if 'analysis_result' not in st.session_state: st.session_state['analysis_result'] = None
+if 'chat_history' not in st.session_state: st.session_state['chat_history'] = []
 
 # --- 3. LOGIN PAGE ---
 def login_page():
     st.markdown("<h1 style='text-align: center;'>🔒 HR Login Portal</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Please enter your credentials to access the Resume Screener.</p>", unsafe_allow_html=True)
-    
+    st.markdown("<p style='text-align: center;'>Please enter your credentials.</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        
         if st.button("Login"):
             if username == "admin" and password == "admin123":
                 st.session_state['logged_in'] = True
                 st.rerun()
             else:
-                st.error("❌ Invalid Username or Password")
+                st.error("❌ Invalid Credentials")
 
 # --- 4. MAIN APP LOGIC ---
 def main_tool():
-    # Sidebar
     with st.sidebar:
         st.title("Admin Panel")
         st.write("Welcome, HR Admin")
         st.markdown("---")
         if st.button("Logout"):
             st.session_state['logged_in'] = False
+            st.session_state['analysis_result'] = None # Clear data on logout
+            st.session_state['chat_history'] = []
             st.rerun()
         st.markdown("---")
-        st.info("ℹ️ Use 'Delete' to remove candidates permanently.")
+        st.info("ℹ️ Chatbot is active for analyzed resumes.")
 
     # --- DB FUNCTIONS ---
     def init_db():
@@ -139,8 +89,7 @@ def main_tool():
             if len(columns) != 5:
                 c.execute('DROP TABLE candidates')
                 conn.commit()
-        c.execute('''CREATE TABLE IF NOT EXISTS candidates 
-                     (name TEXT, score INTEGER, education TEXT, skills TEXT, reason TEXT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS candidates (name TEXT, score INTEGER, education TEXT, skills TEXT, reason TEXT)''')
         conn.commit()
         conn.close()
 
@@ -151,14 +100,13 @@ def main_tool():
         try:
             c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", (name, score, education, skills_str, reason))
             conn.commit()
-        except sqlite3.OperationalError:
+        except:
             c.execute("DROP TABLE IF EXISTS candidates")
             init_db()
             c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", (name, score, education, skills_str, reason))
             conn.commit()
         conn.close()
 
-    # --- NEW: DELETE FUNCTION ---
     def delete_candidate(name):
         conn = sqlite3.connect('candidates.db')
         c = conn.cursor()
@@ -166,7 +114,7 @@ def main_tool():
         conn.commit()
         conn.close()
 
-    # --- PDF & ANALYZE FUNCTIONS (SAME AS BEFORE) ---
+    # --- PDF & ANALYZE ---
     def extract_text_from_pdf(uploaded_file):
         text = ""
         try:
@@ -175,15 +123,12 @@ def main_tool():
                 content = page.extract_text()
                 if content: text += content + " "
             if len(text.strip()) < 50:
-                with st.spinner("⚠️ Scanned Image Detected! Extracting text via OCR..."):
+                with st.spinner("⚠️ Scanned PDF! Applying OCR..."):
                     uploaded_file.seek(0)
                     images = convert_from_bytes(uploaded_file.read())
-                    for img in images[:2]:
-                        text += pytesseract.image_to_string(img)
+                    for img in images[:2]: text += pytesseract.image_to_string(img)
             return re.sub(r'\s+', ' ', text).strip()
-        except Exception as e:
-            st.error(f"Error parsing PDF: {e}")
-            return ""
+        except: return ""
 
     def analyze_resume(text):
         res = {"education": "Unknown", "skills": [], "score": 25, "reason": "", "10th": "Not Found", "12th": "Not Found"}
@@ -200,24 +145,18 @@ def main_tool():
             res["education"] = "B.Sc/M.Sc"
             res["score"] += 30
 
-        match_10 = re.search(r'(?:10th|Class X|SSC|Matric|High School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
-        if match_10:
-            res["10th"] = match_10.group(1)
-            res["score"] += 2
-        match_12 = re.search(r'(?:12th|Class XII|HSC|Intermediate|Senior School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
-        if match_12:
-            res["12th"] = match_12.group(1)
-            res["score"] += 2
+        match_10 = re.search(r'(?:10th|Class X|SSC|Matric)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
+        if match_10: res["10th"] = match_10.group(1); res["score"] += 2
+        match_12 = re.search(r'(?:12th|Class XII|HSC|Intermediate)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
+        if match_12: res["12th"] = match_12.group(1); res["score"] += 2
 
-        skill_list = ["Python", "Java", "C\+\+", "SQL", "MySQL", "JavaScript", "HTML", "CSS", "React", "Node", "AWS", "Git", "Machine Learning", "Excel"]
+        skill_list = ["Python", "Java", "C\+\+", "SQL", "MySQL", "JavaScript", "HTML", "CSS", "React", "Node", "AWS", "Git", "Excel"]
         found_skills = []
         for skill in skill_list:
             if re.search(r'\b' + skill.replace("+", "\+") + r'\b', text, re.I):
-                found_skills.append(skill.replace("\+", "+"))
-                res["score"] += 5
+                found_skills.append(skill.replace("\+", "+")); res["score"] += 5
         
-        res["skills"] = list(set(found_skills))
-        res["score"] = min(res["score"], 100)
+        res["skills"] = list(set(found_skills)); res["score"] = min(res["score"], 100)
 
         if res["score"] >= 70: res["reason"] = "Selected: Strong Profile"
         elif res["score"] >= 40: res["reason"] = "Waitlist: Average Profile"
@@ -230,101 +169,116 @@ def main_tool():
 
     # --- UI LAYOUT ---
     init_db()
-
     st.title("📄 AI Resume Screener")
     st.markdown("### Upload Resume to Check Eligibility")
 
     uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
+    # 1. ANALYZE BUTTON
     if uploaded_file is not None:
         if st.button("Analyze Resume Now"):
             text = extract_text_from_pdf(uploaded_file)
             result = analyze_resume(text)
             
-            edu_full_text = f"{result['education']} | 10th: {result['10th']} | 12th: {result['12th']}"
-            save_candidate(uploaded_file.name, result['score'], edu_full_text, result['skills'], result['reason'])
+            # Save result to Session State (Memory) so it persists during chat
+            st.session_state['analysis_result'] = result
+            st.session_state['resume_text'] = text
+            st.session_state['file_name'] = uploaded_file.name
+            st.session_state['chat_history'] = [] # Clear old chat
             
-            st.divider()
-            st.subheader(f"Result for: {uploaded_file.name}")
-            
-            col1, col2 = st.columns(2)
-            col1.metric("Overall Score", f"{result['score']}/100")
-            status_color = "green" if "Selected" in result['reason'] else "orange" if "Waitlist" in result['reason'] else "red"
-            col2.markdown(f"### Status: :{status_color}[{result['reason']}]")
-            
-            st.divider()
-            st.markdown("#### 🎓 Education & Marks")
-            c1, c2, c3 = st.columns(3)
-            with c1: st.markdown(f"<div class='info-box'><b>Degree</b><br>{result['education']}</div>", unsafe_allow_html=True)
-            with c2: st.markdown(f"<div class='info-box'><b>10th</b><br>{result['10th']}</div>", unsafe_allow_html=True)
-            with c3: st.markdown(f"<div class='info-box'><b>12th</b><br>{result['12th']}</div>", unsafe_allow_html=True)
-            
-            st.markdown("#### 🛠️ Skills")
-            st.markdown(f"<div class='info-box'>{', '.join(result['skills']) if result['skills'] else 'None'}</div>", unsafe_allow_html=True)
-            
-            with st.expander("📄 View Raw Text"):
-                st.markdown(f"<div class='resume-box'>{text}</div>", unsafe_allow_html=True)
+            # Save to Database
+            edu_full = f"{result['education']} | 10th: {result['10th']} | 12th: {result['12th']}"
+            save_candidate(uploaded_file.name, result['score'], edu_full, result['skills'], result['reason'])
 
-    # --- PROFESSIONAL CANDIDATE LIST (REPLACES OLD TABLE) ---
+    # 2. SHOW RESULTS (If analysis exists in memory)
+    if st.session_state['analysis_result']:
+        res = st.session_state['analysis_result']
+        name = st.session_state['file_name']
+        
+        st.divider()
+        st.subheader(f"Result for: {name}")
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Overall Score", f"{res['score']}/100")
+        status_color = "green" if "Selected" in res['reason'] else "orange" if "Waitlist" in res['reason'] else "red"
+        col2.markdown(f"### Status: :{status_color}[{res['reason']}]")
+        
+        st.divider()
+        st.markdown("#### 🎓 Education & Marks")
+        c1, c2, c3 = st.columns(3)
+        with c1: st.markdown(f"<div class='info-box'><b>Degree</b><br>{res['education']}</div>", unsafe_allow_html=True)
+        with c2: st.markdown(f"<div class='info-box'><b>10th</b><br>{res['10th']}</div>", unsafe_allow_html=True)
+        with c3: st.markdown(f"<div class='info-box'><b>12th</b><br>{res['12th']}</div>", unsafe_allow_html=True)
+        
+        st.markdown("#### 🛠️ Skills")
+        st.markdown(f"<div class='info-box'>{', '.join(res['skills']) if res['skills'] else 'None'}</div>", unsafe_allow_html=True)
+        
+        with st.expander("📄 View Raw Text"):
+            st.markdown(f"<div class='resume-box'>{st.session_state['resume_text']}</div>", unsafe_allow_html=True)
+
+        # --- 3. CHATBOT SECTION ---
+        st.divider()
+        st.markdown("### 💬 Chat with this Candidate Data")
+        
+        # Display Chat History
+        for msg in st.session_state['chat_history']:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # Chat Input
+        if prompt := st.chat_input("Ask something (e.g., 'What are the skills?', 'Why rejected?')..."):
+            # User Message
+            st.session_state['chat_history'].append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            # --- BOT LOGIC (Smart Rule-Based) ---
+            prompt_lower = prompt.lower()
+            bot_reply = "I didn't understand. Try asking about **Score, Skills, Education, or Reason**."
+            
+            if "score" in prompt_lower or "marks" in prompt_lower:
+                bot_reply = f"The candidate scored **{res['score']}/100** based on our criteria."
+            elif "skill" in prompt_lower or "technology" in prompt_lower:
+                bot_reply = f"The technical skills found are: **{', '.join(res['skills'])}**."
+            elif "education" in prompt_lower or "degree" in prompt_lower or "college" in prompt_lower:
+                bot_reply = f"Education: **{res['education']}**.\nMarks - 10th: {res['10th']}, 12th: {res['12th']}."
+            elif "reason" in prompt_lower or "status" in prompt_lower or "reject" in prompt_lower or "select" in prompt_lower:
+                bot_reply = f"Current Status: **{res['reason']}**."
+            elif "email" in prompt_lower or "contact" in prompt_lower:
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+', st.session_state['resume_text'])
+                bot_reply = f"Found Email: **{email_match.group(0)}**" if email_match else "No email address found in the text."
+            
+            # Assistant Message
+            st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
+            with st.chat_message("assistant"):
+                st.markdown(bot_reply)
+
+    # --- 4. HR DATABASE LIST ---
     st.divider()
-    st.markdown("### 🗂️ Candidate Database (HR Only)")
-
+    st.markdown("### 🗂️ Candidate Database")
     if st.checkbox("Show Candidate Management List"):
         conn = sqlite3.connect('candidates.db')
         try:
             df = pd.read_sql_query("SELECT * FROM candidates", conn)
-            
-            if df.empty:
-                st.info("Database is empty. No candidates analyzed yet.")
+            if df.empty: st.info("No data yet.")
             else:
-                # Loop through each candidate and create a CARD
                 for index, row in df.iterrows():
-                    
-                    # Color Coding for Border based on Status
                     status_color = "#4CAF50" if "Selected" in row['reason'] else "#FF9800" if "Waitlist" in row['reason'] else "#F44336"
-                    
-                    # Card Container
                     with st.container():
-                        # Custom HTML for Card Look
-                        st.markdown(f"""
-                        <div class="candidate-card" style="border-left: 8px solid {status_color};">
-                            <h4 style="margin:0; color:black;">👤 {row['name']}</h4>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Data Columns inside the Card
+                        st.markdown(f"""<div class="candidate-card" style="border-left: 8px solid {status_color};"><h4 style="margin:0; color:black;">👤 {row['name']}</h4></div>""", unsafe_allow_html=True)
                         c1, c2, c3, c4 = st.columns([2, 3, 2, 1])
-                        
-                        with c1:
-                            st.caption("Score")
-                            st.write(f"**{row['score']}/100**")
-                        
-                        with c2:
-                            st.caption("Status")
-                            st.write(f"{row['reason']}")
-                        
+                        with c1: st.write(f"**{row['score']}/100**")
+                        with c2: st.write(f"{row['reason']}")
                         with c3:
-                            with st.expander("View Details"):
-                                st.write(f"**Edu:** {row['education']}")
-                                st.write(f"**Skills:** {row['skills']}")
-                        
+                            with st.expander("Details"):
+                                st.write(f"**Edu:** {row['education']}\n**Skills:** {row['skills']}")
                         with c4:
-                            # Delete Button for this specific row
-                            if st.button("🗑️ Delete", key=f"del_{index}"):
+                            if st.button("🗑️", key=f"del_{index}"):
                                 delete_candidate(row['name'])
-                                st.rerun() # Refresh page immediately
-                                
-                # Download CSV Option (at the bottom)
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button("📥 Download Full CSV", csv, "candidates.csv", "text/csv")
-                
-        except Exception as e:
-            st.error(f"Error loading database: {e}")
-        finally:
-            conn.close()
+                                st.rerun()
+                st.download_button("📥 CSV", df.to_csv(index=False).encode('utf-8'), "candidates.csv", "text/csv")
+        except Exception as e: st.error(str(e))
+        finally: conn.close()
 
-# --- 5. CONTROL FLOW ---
-if not st.session_state['logged_in']:
-    login_page()
-else:
-    main_tool()
+if not st.session_state['logged_in']: login_page()
+else: main_tool()
