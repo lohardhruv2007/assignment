@@ -18,8 +18,8 @@ st.markdown("""
         border-radius: 10px;
         height: 3.5em;
         background-color: #2e7d32;
-        color: white;
-        font-weight: bold;
+        color: green;
+        font-weight: Times New Roman;
         border: none;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
