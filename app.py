@@ -32,19 +32,18 @@ st.markdown("""
     }
 
     /* 4. FIX: FILE UPLOADER (Drag & Drop Area) */
-    /* Is area ka text WHITE karenge taaki dark background pe dikhe */
     [data-testid="stFileUploader"] {
-        background-color: #262730; /* Dark background ensure karein */
+        background-color: #262730; 
         border-radius: 10px;
         padding: 10px;
     }
     [data-testid="stFileUploader"] span, 
     [data-testid="stFileUploader"] small, 
     [data-testid="stFileUploader"] div {
-        color: #FFFFFF !important; /* TEXT WHITE */
+        color: #FFFFFF !important;
     }
     
-    /* 5. BUTTONS -> Red Background, White Text */
+    /* 5. BUTTONS */
     .stButton>button {
         background-color: #FF4B4B;
         color: white !important;
@@ -53,9 +52,24 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* 6. Success/Error Messages Text -> BLACK (for readability on colored box) */
+    /* 6. STATUS MESSAGES */
     .stAlert div {
         color: #000000 !important;
+    }
+
+    /* 7. NEW: PROFESSIONAL RAW TEXT BOX STYLE */
+    .resume-box {
+        background-color: #FFFFFF; /* White Paper look */
+        border: 1px solid #CCCCCC;
+        padding: 15px;
+        border-radius: 5px;
+        font-family: 'Courier New', Courier, monospace; /* Typewriter font */
+        font-size: 14px;
+        color: #333333 !important;
+        height: 300px; /* Fixed height */
+        overflow-y: scroll; /* Scrollbar */
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1); /* Soft Shadow */
+        white-space: pre-wrap; /* Keeps formatting */
     }
     </style>
 """, unsafe_allow_html=True)
@@ -167,7 +181,6 @@ init_db()
 st.title("📄 AI Resume Screener")
 st.markdown("### Upload Resume to Check Eligibility")
 
-# File Uploader (CSS will make this text White)
 uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
 if uploaded_file is not None:
@@ -185,7 +198,7 @@ if uploaded_file is not None:
         col2.metric("Education", "Tech" if "Tech" in result['education'] else "Other")
         col3.metric("Skills Found", len(result['skills']))
         
-        # Status
+        # Status Box
         if "Selected" in result['reason']:
             st.success(f"🎉 {result['reason']}")
         elif "Waitlist" in result['reason']:
@@ -193,10 +206,13 @@ if uploaded_file is not None:
         else:
             st.error(f"❌ {result['reason']}")
             
-        with st.expander("See Detailed Analysis"):
-            st.write(f"**Detected Education:** {result['education']}")
-            st.write(f"**Detected Skills:** {', '.join(result['skills'])}")
-            st.text_area("Raw Text (First 500 chars)", text[:500] + "...")
+        # --- NEW PROFESSIONAL TEXT DESIGN ---
+        with st.expander("📄 View Extracted Content (Raw Text)"):
+            st.markdown(f"""
+                <div class="resume-box">
+                {text}
+                </div>
+            """, unsafe_allow_html=True)
 
 # Database View
 st.divider()
