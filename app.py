@@ -9,7 +9,7 @@ init_db()
 
 st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🌿", layout="wide")
 
-# --- PERFECT CENTERED & BALANCED CSS ---
+# --- CLEAN CENTERED CSS (NO UNDERLINE BAR) ---
 st.markdown("""
     <style>
     /* 1. Page Background and Center Alignment */
@@ -29,14 +29,13 @@ st.markdown("""
         margin: auto !important;
     }
 
-    /* 2. Highlighted Heading (Balanced) */
+    /* 2. Highlighted Heading (CLEAN - NO BAR) */
     .portal-heading {
         font-size: 65px !important;
         font-weight: 800 !important;
         color: #1b3022 !important;
         text-align: center !important;
         margin-bottom: 40px !important;
-        border-bottom: 4px solid #4f6d5a !important;
         padding-bottom: 10px !important;
         letter-spacing: 1px !important;
     }
@@ -105,7 +104,7 @@ if 'page' not in st.session_state: st.session_state['page'] = "Login"
 
 # --- LOGIN PAGE ---
 if not st.session_state['logged_in']:
-    # Balanced Highlighted Heading
+    # Clean Heading
     st.markdown('<div class="portal-heading">Recruiter Portal</div>', unsafe_allow_html=True)
     
     # Perfectly Centered Box
