@@ -10,7 +10,7 @@ import io
 # --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS (SMART COLOR ADJUSTMENT) ---
+# --- CUSTOM CSS (Cream Background + Black Text + White Cards) ---
 st.markdown("""
     <style>
     /* 1. Main Background Cream */
@@ -31,7 +31,7 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* 4. FIX: FILE UPLOADER (Drag & Drop Area) */
+    /* 4. DRAG & DROP AREA (Dark + White Text) */
     [data-testid="stFileUploader"] {
         background-color: #262730; 
         border-radius: 10px;
@@ -52,24 +52,29 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* 6. STATUS MESSAGES */
-    .stAlert div {
-        color: #000000 !important;
+    /* 6. INFO CARDS (For Detected Details) */
+    .info-box {
+        background-color: #FFFFFF;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 5px solid #FF4B4B;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
     }
 
-    /* 7. NEW: PROFESSIONAL RAW TEXT BOX STYLE */
+    /* 7. RAW TEXT BOX (Professional Paper Look) */
     .resume-box {
-        background-color: #FFFFFF; /* White Paper look */
+        background-color: #FFFFFF;
         border: 1px solid #CCCCCC;
         padding: 15px;
         border-radius: 5px;
-        font-family: 'Courier New', Courier, monospace; /* Typewriter font */
+        font-family: 'Courier New', Courier, monospace;
         font-size: 14px;
         color: #333333 !important;
-        height: 300px; /* Fixed height */
-        overflow-y: scroll; /* Scrollbar */
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.1); /* Soft Shadow */
-        white-space: pre-wrap; /* Keeps formatting */
+        height: 250px;
+        overflow-y: scroll;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+        white-space: pre-wrap;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -132,25 +137,45 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"Error parsing PDF: {e}")
         return ""
 
-# --- 4. SCORING LOGIC ---
+# --- 4. SCORING & PARSING LOGIC ---
 def analyze_resume(text):
-    res = {"education": "Unknown", "skills": [], "score": 25, "reason": ""}
+    res = {
+        "education": "Unknown", 
+        "skills": [], 
+        "score": 25, 
+        "reason": "",
+        "10th": "Not Found",
+        "12th": "Not Found"
+    }
     
     if not text:
         res["reason"] = "Rejected: File unreadable."
         return res
 
-    # Education
+    # --- A. EDUCATION DEGREE CHECK ---
     has_degree = False
-    if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor\s*of\s*Technology|Engineering|B\.E\.|M\.C\.A|B\.C\.A|Techno India', text, re.I):
-        res["education"] = "Technical Degree (B.Tech/BE/MCA)"
+    if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor\s*of\s*Technology|Engineering|B\.E\.|M\.C\.A|B\.C\.A', text, re.I):
+        res["education"] = "B.Tech/BE/MCA"
         res["score"] += 45
         has_degree = True
     elif re.search(r'B\.Sc|M\.Sc|Bachelor\s*of\s*Science', text, re.I):
-        res["education"] = "Science Degree (B.Sc/M.Sc)"
+        res["education"] = "B.Sc/M.Sc"
         res["score"] += 30
 
-    # Skills
+    # --- B. MARKS EXTRACTION (10th & 12th) ---
+    # Regex for 10th (Class X, SSC, Matric) -> Looks for digits followed by % or CGPA
+    match_10 = re.search(r'(?:10th|Class X|SSC|Matric|High School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
+    if match_10:
+        res["10th"] = match_10.group(1)
+        res["score"] += 2 # Bonus for mentioning marks
+
+    # Regex for 12th (Class XII, HSC, Intermediate)
+    match_12 = re.search(r'(?:12th|Class XII|HSC|Intermediate|Senior School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
+    if match_12:
+        res["12th"] = match_12.group(1)
+        res["score"] += 2 # Bonus for mentioning marks
+
+    # --- C. SKILLS CHECK ---
     skill_list = ["Python", "Java", "C\+\+", "SQL", "MySQL", "JavaScript", "HTML", "CSS", "React", "Node", "AWS", "Git", "Machine Learning", "Excel"]
     found_skills = []
     for skill in skill_list:
@@ -162,7 +187,7 @@ def analyze_resume(text):
     res["skills"] = list(set(found_skills))
     res["score"] = min(res["score"], 100)
 
-    # Decision
+    # --- D. DECISION ---
     if res["score"] >= 70:
         res["reason"] = "Selected: Strong Profile"
     elif res["score"] >= 40:
@@ -188,25 +213,58 @@ if uploaded_file is not None:
         
         text = extract_text_from_pdf(uploaded_file)
         result = analyze_resume(text)
-        save_candidate(uploaded_file.name, result['score'], result['education'], result['skills'], result['reason'])
+        
+        # Save to DB (Marks ko Education field me jod kar save karenge taaki DB error na aaye)
+        edu_full_text = f"{result['education']} | 10th: {result['10th']} | 12th: {result['12th']}"
+        save_candidate(uploaded_file.name, result['score'], edu_full_text, result['skills'], result['reason'])
         
         st.divider()
         st.subheader(f"Result for: {uploaded_file.name}")
         
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Score", f"{result['score']}/100")
-        col2.metric("Education", "Tech" if "Tech" in result['education'] else "Other")
-        col3.metric("Skills Found", len(result['skills']))
+        # 1. TOP METRICS (Score & Status)
+        col1, col2 = st.columns(2)
+        col1.metric("Overall Score", f"{result['score']}/100")
         
-        # Status Box
-        if "Selected" in result['reason']:
-            st.success(f"🎉 {result['reason']}")
-        elif "Waitlist" in result['reason']:
-            st.warning(f"⚠️ {result['reason']}")
-        else:
-            st.error(f"❌ {result['reason']}")
-            
-        # --- NEW PROFESSIONAL TEXT DESIGN ---
+        status_color = "green" if "Selected" in result['reason'] else "orange" if "Waitlist" in result['reason'] else "red"
+        col2.markdown(f"### Status: :{status_color}[{result['reason']}]")
+        
+        st.divider()
+
+        # 2. DETAILED BREAKDOWN (Professional Cards)
+        st.markdown("#### 🎓 Education & Marks Details")
+        
+        # Grid for Education
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f"""
+            <div class="info-box">
+                <b>Highest Degree</b><br>
+                {result['education']}
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"""
+            <div class="info-box">
+                <b>10th / SSC</b><br>
+                {result['10th']}
+            </div>
+            """, unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"""
+            <div class="info-box">
+                <b>12th / HSC</b><br>
+                {result['12th']}
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("#### 🛠️ Technical Skills Detected")
+        st.markdown(f"""
+        <div class="info-box">
+            {', '.join(result['skills']) if result['skills'] else 'No specific skills detected.'}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 3. RAW TEXT VIEWER
         with st.expander("📄 View Extracted Content (Raw Text)"):
             st.markdown(f"""
                 <div class="resume-box">
