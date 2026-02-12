@@ -7,73 +7,70 @@ from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 # Initialize Database
 init_db()
 
-# Page config to force wide mode
+# Force wide mode and hide default padding
 st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🌿", layout="wide")
 
-# --- THE ABSOLUTE ERASER CSS (No Bars, No Margins, Pure Centered) ---
+# --- THE ABSOLUTE ERASER (Aggressive CSS Reset) ---
 st.markdown("""
     <style>
-    /* 1. HIDE ALL STREAMLIT BARS & PADDING */
-    [data-testid="stHeader"], footer, #MainMenu {display: none !important;}
-    
-    /* 2. FORCE FULL SCREEN BACKGROUND */
+    /* 1. HIDE EVERYTHING: Header, Footer, Main Menu, and Gaps */
+    header, footer, [data-testid="stHeader"], #MainMenu {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* 2. FORCE TOTAL BACKGROUND (No White Gaps) */
     .stApp {
         background-color: #f3f7f0 !important;
         font-family: 'Times New Roman', Times, serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
-    /* 3. CENTER EVERYTHING & KILL TOP WHITE SPACE */
+    /* 3. KILL TOP PADDING (Main Content upar chipak jayega) */
     .main .block-container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
         height: 100vh !important;
-        padding: 0 !important;
-        margin-top: -50px !important; /* Forces content up to hide gaps */
+        max-width: 100% !important;
     }
 
-    /* 4. RECRUITER PORTAL HEADING (CLEAN & CENTERED) */
+    /* 4. RECRUITER PORTAL HEADING (Centered & Clean) */
     .portal-heading {
-        font-size: 75px !important;
+        font-size: 70px !important;
         font-weight: 800 !important;
         color: #1b3022 !important;
         text-align: center !important;
-        margin-bottom: 20px !important;
-        width: 100% !important;
+        margin: 0 0 30px 0 !important;
+        padding: 0 !important;
     }
 
-    /* 5. PERFECT CENTER CARD (LOGIN BOX) */
-    .login-box {
-        background-color: white !important;
-        padding: 50px !important;
-        border-radius: 25px !important;
-        border: 2px solid #c8d6cc !important;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.08) !important;
-        width: 550px !important; /* Fixed width for better look */
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 15px !important;
-    }
-
-    /* 6. INPUT BOXES FIX (NO DARK COLOR) */
-    div[data-baseweb="input"] {
-        background-color: #eef2ef !important;
+    /* 5. INPUT BOXES FIX (Dark color hatakar background jaisa pastel green) */
+    div[data-baseweb="input"], [data-testid="stTextInput"] > div {
+        background-color: #eef2ef !important; /* Pastel Background */
         border: 2px solid #c8d6cc !important;
         border-radius: 12px !important;
+        color: #1b3022 !important;
         height: 65px !important;
     }
 
     input {
+        background-color: transparent !important;
         font-size: 26px !important;
         text-align: center !important;
         color: #1b3022 !important;
     }
 
-    /* 7. GIANT ENTER BUTTON */
-    .stButton>button {
+    /* 6. GIANT ENTER BUTTON (Centered & Full Width) */
+    .stButton > button {
         width: 100% !important;
-        height: 85px !important;
+        height: 80px !important;
         background-color: #4f6d5a !important;
         color: white !important;
         font-size: 32px !important;
@@ -83,36 +80,17 @@ st.markdown("""
         margin-top: 20px !important;
     }
 
-    .stButton>button:hover {
-        background-color: #3a5142 !important;
+    /* 7. LOGIN BOX CARD (Pure White Clean Look) */
+    .login-box {
+        background-color: white !important;
+        padding: 40px !important;
+        border-radius: 25px !important;
+        border: 2px solid #c8d6cc !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
+        width: 550px !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
-    </style>
-    """, unsafe_allow_html=True)
 
-# Session States
-if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
-
-# --- LOGIN FLOW ---
-if not st.session_state['logged_in']:
-    # Clean Heading
-    st.markdown('<div class="portal-heading">Recruiter Portal</div>', unsafe_allow_html=True)
-    
-    # Login Card
-    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    user = st.text_input("User", placeholder="admin", label_visibility="collapsed")
-    pwd = st.text_input("Pass", type="password", placeholder="hr123", label_visibility="collapsed")
-    
-    if st.button("ENTER DASHBOARD"):
-        if user == "admin" and pwd == "hr123":
-            st.session_state['logged_in'] = True
-            st.rerun()
-        else:
-            st.error("Invalid Credentials")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# --- PROTECTED APP CONTENT ---
-else:
-    st.title("🌿 Welcome to TalentFlow")
-    if st.button("Logout"):
-        st.session_state['logged_in'] = False
-        st.rerun()
+    /* Sidebar huge text fix */
+    [data
