@@ -38,21 +38,40 @@ st.markdown("""
     .resume-box { background-color: #FFFFFF; border: 1px solid #CCCCCC; padding: 15px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #333333 !important; height: 250px; overflow-y: scroll; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); white-space: pre-wrap; }
     .candidate-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-left: 8px solid #333; }
 
-    /* --- CHAT BAR STYLING (Removing Form Border) --- */
+    /* --- UNIFIED CHAT CARD STYLING --- */
+    .chat-card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+        padding: 20px;
+        margin-top: 20px;
+        border: 1px solid #ddd;
+    }
+    
+    .chat-header {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333 !important;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #FF4B4B;
+        padding-bottom: 5px;
+        display: inline-block;
+    }
+
+    .chat-history-area {
+        background-color: #F9F9F9;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 250px;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        border: 1px solid #eee;
+    }
+
+    /* Remove Streamlit Form Border to blend in */
     [data-testid="stForm"] {
         border: none;
         padding: 0;
-        margin-top: 20px;
-    }
-    
-    /* Chat Response Bubble */
-    .chat-bubble {
-        background-color: #FFFFFF;
-        padding: 15px;
-        border-radius: 10px;
-        margin-top: 10px;
-        border-left: 5px solid #2196F3; /* Blue accent */
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -227,21 +246,34 @@ def main_tool():
         with st.expander("📄 View Raw Text"):
             st.markdown(f"<div class='resume-box'>{st.session_state['resume_text']}</div>", unsafe_allow_html=True)
 
-        # --- HORIZONTAL CHAT BAR (NO GAPS, SAME LINE) ---
+        # --- UNIFIED CHAT CARD (PROFESSIONAL BOX) ---
         st.divider()
         
-        # Form Container that looks like a Toolbar
+        # Start Card Container
+        st.markdown('<div class="chat-card">', unsafe_allow_html=True)
+        
+        # 1. Heading
+        st.markdown('<div class="chat-header">💬 Chat about this Candidate</div>', unsafe_allow_html=True)
+        
+        # 2. Chat History Area (Inside the card)
+        if st.session_state['chat_history']:
+            st.markdown('<div class="chat-history-area">', unsafe_allow_html=True)
+            for msg in st.session_state['chat_history']:
+                bubble_color = "#E3F2FD" if msg["role"] == "assistant" else "#FFFFFF"
+                border_color = "#2196F3" if msg["role"] == "assistant" else "#9E9E9E"
+                st.markdown(f"""
+                <div style='background-color: {bubble_color}; padding: 8px 12px; border-radius: 8px; 
+                            border-left: 4px solid {border_color}; margin-bottom: 8px; font-size: 14px;'>
+                    <b>{'🤖 AI' if msg['role'] == 'assistant' else '👤 HR'}:</b> {msg['content']}
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # 3. Input Form (Integrated inside the same card)
         with st.form(key='chat_form', clear_on_submit=True):
-            # Layout: [Title (Small width)] [Input Box (Big width)] [Button (Small width)]
-            c_label, c_input, c_btn = st.columns([3, 5, 1])
-            
-            with c_label:
-                # Align text vertically with input box
-                st.markdown("<h3 style='margin-top: 5px; margin-bottom: 0;'>💬 Chat with Data:</h3>", unsafe_allow_html=True)
-                
-            with c_input:
-                user_input = st.text_input("Message", placeholder="Ask 'What are the skills?'...", label_visibility="collapsed")
-                
+            c_in, c_btn = st.columns([6, 1])
+            with c_in:
+                user_input = st.text_input("Message", placeholder="Ask something...", label_visibility="collapsed")
             with c_btn:
                 submit_btn = st.form_submit_button("Send ➤")
             
@@ -266,20 +298,9 @@ def main_tool():
                 st.session_state['chat_history'].append({"role": "assistant", "content": bot_reply})
                 st.rerun()
 
-        # --- CHAT RESPONSES (Shown Below the Bar) ---
-        # Show only the last exchange or full history
-        if st.session_state['chat_history']:
-            for msg in reversed(st.session_state['chat_history']): # Newest first
-                bubble_color = "#E3F2FD" if msg["role"] == "assistant" else "#F5F5F5"
-                border_color = "#2196F3" if msg["role"] == "assistant" else "#9E9E9E"
-                align = "left" 
-                
-                st.markdown(f"""
-                <div style='background-color: {bubble_color}; padding: 10px; border-radius: 10px; 
-                            border-left: 5px solid {border_color}; margin-bottom: 10px;'>
-                    <b>{'🤖 AI' if msg['role'] == 'assistant' else '👤 HR'}:</b> {msg['content']}
-                </div>
-                """, unsafe_allow_html=True)
+        # End Card Container
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
     # --- DATABASE LIST ---
     st.divider()
