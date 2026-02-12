@@ -4,36 +4,37 @@ import sqlite3
 import os
 from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 
-# Initialize
+# Step 1: Initialize Database
 init_db()
 
 st.set_page_config(page_title="TalentFlow AI Pro", page_icon="🚀", layout="wide")
 
-# --- CUSTOM CSS FOR UI ---
+# --- CUSTOM CSS (Error Fixed here) ---
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
+    .main { background-color: #f0f2f6; }
     .stButton>button {
         width: 100%;
-        border-radius: 8px;
-        height: 3em;
-        background-color: #007bff;
+        border-radius: 10px;
+        height: 3.5em;
+        background-color: #2e7d32;
         color: white;
-        border: none;
         font-weight: bold;
-        transition: 0.3s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .stButton>button:hover { background-color: #0056b3; border: none; }
-    .reportview-container .main .block-container { padding-top: 2rem; }
+    .stButton>button:hover { background-color: #1b5e20; }
     .card {
         background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
+        border: 1px solid #e0e0e0;
     }
+    h1, h2, h3 { color: #1e3a8a; }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True) # FIXED: changed stdio to html
 
 # Session States
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
@@ -41,85 +42,87 @@ if 'page' not in st.session_state: st.session_state['page'] = "Login"
 
 # --- LOGIN PAGE ---
 if not st.session_state['logged_in']:
-    cols = st.columns([1, 2, 1])
-    with cols[1]:
+    _, col2, _ = st.columns([1, 1.5, 1])
+    with col2:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.title("💼 Recruiter Login")
-        st.write("Welcome to TalentFlow AI Enterprise Edition")
+        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
+        st.title("Recruiter Portal")
+        st.write("Sign in to access AI Screening tools")
         user = st.text_input("Username")
         pwd = st.text_input("Password", type="password")
-        if st.button("Secure Login"):
+        if st.button("Authorize Access"):
             if user == "admin" and pwd == "hr123":
                 st.session_state['logged_in'] = True
                 st.session_state['page'] = "Screener"
                 st.rerun()
-            else: st.error("Invalid Credentials")
+            else: st.error("Access Denied: Incorrect Credentials")
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- APP FLOW ---
+# --- PROTECTED APP CONTENT ---
 else:
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100)
-        st.title("TalentFlow Pro")
+        st.title("🚀 TalentFlow AI")
         st.markdown("---")
-        if st.button("🔍 New Screening"): st.session_state['page'] = "Screener"; st.rerun()
-        if st.button("📊 Talent Database"): st.session_state['page'] = "Database"; st.rerun()
+        if st.sidebar.button("🔍 Resume Screener"): st.session_state['page'] = "Screener"; st.rerun()
+        if st.sidebar.button("📊 Insight Dashboard"): st.session_state['page'] = "Database"; st.rerun()
         st.markdown("---")
-        if st.button("🚪 Logout"): st.session_state['logged_in'] = False; st.rerun()
+        if st.sidebar.button("Logout"): 
+            st.session_state['logged_in'] = False
+            st.rerun()
 
     # SCREENER PAGE
     if st.session_state['page'] == "Screener":
-        st.header("🔍 Intelligent Talent Screening")
-        st.write("Upload candidate resumes for instant AI ranking and reasoning.")
+        st.header("🔍 Intelligent Screening Agent")
+        st.write("Upload PDF resumes for high-speed AI analysis and ranking.")
         
-        with st.container():
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-            files = st.file_uploader("Drop PDF files here (Max 1GB)", type="pdf", accept_multiple_files=True)
-            if files and st.button("🚀 Start AI Analysis"):
-                with st.status("Reading resumes & performing OCR...", expanded=True) as status:
-                    for f in files:
-                        st.write(f"Processing: {f.name}...")
-                        text = extract_text_from_pdf(f)
-                        res = analyze_resume(text)
-                        save_candidate(f.name, res["score"], res["education"], res["notice_period"], ", ".join(res["skills"]), res["reason"])
-                    status.update(label="Analysis Complete!", state="complete", expanded=False)
-                st.session_state['page'] = "Database"
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        files = st.file_uploader("Upload Batch (PDF only)", type="pdf", accept_multiple_files=True)
+        if files and st.button("⚡ Start Neural Ranking"):
+            with st.status("Analyzing content and extracting features...", expanded=True) as status:
+                for f in files:
+                    text = extract_text_from_pdf(f)
+                    res = analyze_resume(text)
+                    save_candidate(f.name, res["score"], res["education"], res["notice_period"], ", ".join(res["skills"]), res["reason"])
+                status.update(label="Scanning Complete!", state="complete", expanded=False)
+            st.session_state['page'] = "Database"
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # DATABASE PAGE
     elif st.session_state['page'] == "Database":
-        st.header("📂 Global Talent Pool")
+        st.header("📊 Talent Analytics Dashboard")
         
         conn = sqlite3.connect('candidates.db')
         try:
             df = pd.read_sql_query("SELECT * FROM candidates", conn)
             if not df.empty:
-                # Top Metrics
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Total Candidates", len(df))
-                m2.metric("Avg Score", f"{int(df['score'].mean())}%")
-                m3.metric("Top Candidate", df.sort_values(by="score", ascending=False).iloc[0]['name'])
+                # Top Level Analytics
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total Candidates", len(df))
+                c2.metric("Avg Quality Score", f"{int(df['score'].mean())}%")
+                top_name = df.sort_values(by="score", ascending=False).iloc[0]['name']
+                c3.metric("Top Talent", top_name)
 
                 st.markdown("---")
-                # Fancy Table
+                # Data Table
                 st.dataframe(df.sort_values(by="score", ascending=False), use_container_width=True)
                 
-                # Detailed Feedbacks
-                st.subheader("🤖 AI Decision Insights")
+                # Decision Insights
+                st.subheader("🤖 AI Decision Logs")
                 for _, row in df.iterrows():
+                    # Color coding for reasons
                     color = "green" if row['score'] >= 70 else "orange" if row['score'] >= 40 else "red"
-                    with st.expander(f"Analysis for {row['name']} - Score: {row['score']}%"):
-                        st.markdown(f"**Status:** :{color}[{row['reason']}]")
-                        st.write(f"**Key Skills Found:** {row['skills']}")
+                    with st.expander(f"Report: {row['name']} (Score: {row['score']}%)"):
+                        st.markdown(f"**AI Status:** :{color}[{row['reason']}]")
+                        st.write(f"**Found Skills:** {row['skills']}")
                         st.progress(row['score'] / 100)
             else:
-                st.info("The database is currently empty.")
-        except Exception as e:
-            st.error("Database mismatch. Please use the reset button below.")
+                st.info("No candidates analyzed yet. Go to 'Resume Screener' to start.")
+        except Exception:
+            st.error("Database Schema Error. Please reset below.")
 
         st.markdown("---")
-        if st.button("🗑️ Reset All Data"):
+        if st.button("🗑️ Reset Application Data"):
             conn.close()
             if os.path.exists('candidates.db'): os.remove('candidates.db')
             st.rerun()
