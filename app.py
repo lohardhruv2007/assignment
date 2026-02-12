@@ -3,9 +3,16 @@ import sqlite3
 import pandas as pd
 
 # ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="Recruiter Portal", layout="wide")
+st.set_page_config(
+    page_title="Recruiter Portal",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# ---------------- DATABASE ----------------
+# Completely disable sidebar
+st.sidebar.empty()
+
+# ---------------- DATABASE SETUP ----------------
 def init_db():
     conn = sqlite3.connect("candidates.db")
     c = conn.cursor()
@@ -21,94 +28,69 @@ def init_db():
 
 init_db()
 
-# ---------------- GLOBAL CSS ----------------
+# ---------------- CLEAN CSS ----------------
 st.markdown("""
 <style>
 
-/* Hide default menu */
-header, footer, #MainMenu {
-    visibility: hidden;
+/* Remove top padding */
+.block-container {
+    padding-top: 3rem;
 }
 
 /* Background */
 .stApp {
     background-color: #f3f7f0;
-    font-family: 'Times New Roman', serif;
 }
 
-/* Center everything */
-.main .block-container {
-    padding-top: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-/* Title */
+/* Title style */
 .title {
-    font-size: 60px;
-    font-weight: 800;
+    text-align: center;
+    font-size: 50px;
+    font-weight: bold;
+    margin-bottom: 40px;
     color: #1b3022;
-    margin-bottom: 50px;
 }
 
-/* Fix input base */
+/* Remove blue background */
 div[data-baseweb="input"] {
     background-color: white !important;
-    border-radius: 18px !important;
+    border-radius: 10px !important;
 }
 
-/* Remove blue highlight */
+/* Remove default blue focus glow */
 input {
-    background-color: transparent !important;
-    border: none !important;
+    background-color: white !important;
     box-shadow: none !important;
-    outline: none !important;
+    border: none !important;
 }
 
-/* Input container */
+/* Custom input border */
 [data-testid="stTextInput"] > div {
-    border: 3px solid #c8d6cc !important;
-    border-radius: 18px !important;
-    height: 75px !important;
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    width: 650px !important;
+    border: 2px solid #c8d6cc !important;
+    border-radius: 10px !important;
 }
 
-/* Focus effect */
+/* On focus border */
 [data-testid="stTextInput"] > div:focus-within {
-    border: 3px solid #4f6d5a !important;
+    border: 2px solid #4f6d5a !important;
 }
 
-/* Input text style */
-[data-testid="stTextInput"] input {
-    font-size: 26px !important;
-    color: #6fa88f !important;
-    text-align: center;
-    width: 100%;
-}
-
-/* Button */
+/* Button style */
 .stButton > button {
-    width: 650px;
-    height: 75px;
+    width: 100%;
+    height: 50px;
     background-color: #4f6d5a;
     color: white;
-    font-size: 24px;
-    font-weight: bold;
-    border-radius: 18px;
+    font-size: 18px;
+    border-radius: 8px;
     border: none;
-    margin-top: 30px;
+    margin-top: 15px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- SESSION ----------------
+# ---------------- SESSION STATE ----------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -117,10 +99,12 @@ if not st.session_state.logged_in:
 
     st.markdown('<div class="title">Recruiter Portal</div>', unsafe_allow_html=True)
 
-    username = st.text_input("", placeholder="admin")
-    password = st.text_input("", type="password", placeholder="hr123")  # 👁 eye icon here
+    username = st.text_input("Username")
 
-    if st.button("ENTER DASHBOARD"):
+    # 🔴 NOT using type="password" → so NO eye icon
+    password = st.text_input("Password")
+
+    if st.button("Login"):
         if username == "admin" and password == "hr123":
             st.session_state.logged_in = True
             st.rerun()
@@ -136,13 +120,13 @@ else:
         st.session_state.logged_in = False
         st.rerun()
 
-    st.write("Welcome to Recruiter Dashboard ✅")
+    st.success("Welcome to Recruiter Dashboard ✅")
 
     conn = sqlite3.connect("candidates.db")
     df = pd.read_sql_query("SELECT * FROM candidates", conn)
     conn.close()
 
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
+    if df.empty:
+        st.info("No candidates found.")
     else:
-        st.info("No candidates yet.")
+        st.dataframe(df, use_container_width=True)
