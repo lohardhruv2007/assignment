@@ -132,4 +132,87 @@ def analyze_resume(text):
     for skill in skill_list:
         # Clean regex to match exact words
         pattern = r'\b' + skill.replace("+", "\+") + r'\b'
+        
+        # --- FIXED LINE BELOW ---
         if re.search(pattern, text, re.I):
+            found_skills.append(skill.replace("\+", "+")) # Clean name for display
+            res["score"] += 5
+    
+    # Remove duplicates & Limit Max Score
+    res["skills"] = list(set(found_skills))
+    res["score"] = min(res["score"], 100)
+
+    # Decision Logic
+    if res["score"] >= 70:
+        res["reason"] = "Selected: Strong Profile"
+    elif res["score"] >= 40:
+        res["reason"] = "Waitlist: Average Profile"
+    else:
+        reason_list = []
+        if not has_degree: reason_list.append("No Tech Degree")
+        if len(found_skills) < 2: reason_list.append("Low Skills")
+        res["reason"] = "Rejected: " + ", ".join(reason_list)
+    
+    return res
+
+# --- 5. MAIN UI LAYOUT ---
+init_db() # App start hote hi DB check karega
+
+st.title("📄 AI Resume Screener")
+st.markdown("### Upload Resume to Check Eligibility")
+
+uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
+
+if uploaded_file is not None:
+    if st.button("Analyze Resume Now"):
+        
+        # 1. Extract Text
+        text = extract_text_from_pdf(uploaded_file)
+        
+        # 2. Analyze
+        result = analyze_resume(text)
+        
+        # 3. Save to Database
+        save_candidate(uploaded_file.name, result['score'], result['education'], result['skills'], result['reason'])
+        
+        # 4. Display Results
+        st.divider()
+        st.subheader(f"Result for: {uploaded_file.name}")
+        
+        # Score Card
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Score", f"{result['score']}/100")
+        col2.metric("Education", "Tech" if "Tech" in result['education'] else "Other")
+        col3.metric("Skills Found", len(result['skills']))
+        
+        # Status Message
+        if "Selected" in result['reason']:
+            st.success(f"🎉 {result['reason']}")
+        elif "Waitlist" in result['reason']:
+            st.warning(f"⚠️ {result['reason']}")
+        else:
+            st.error(f"❌ {result['reason']}")
+            
+        # Details Expander
+        with st.expander("See Detailed Analysis"):
+            st.write(f"**Detected Education:** {result['education']}")
+            st.write(f"**Detected Skills:** {', '.join(result['skills'])}")
+            st.text_area("Raw Text (First 500 chars)", text[:500] + "...")
+
+# Show Database Section
+st.divider()
+if st.checkbox("Show All Candidates Database"):
+    conn = sqlite3.connect('candidates.db')
+    try:
+        df = pd.read_sql_query("SELECT * FROM candidates", conn)
+        st.dataframe(df)
+        
+        # Download Button
+        if not df.empty:
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("Download CSV", csv, "candidates.csv", "text/csv")
+            
+    except Exception as e:
+        st.write("Database is empty or could not be read.")
+    finally:
+        conn.close()
