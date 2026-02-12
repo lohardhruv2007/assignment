@@ -31,7 +31,7 @@ header, footer, #MainMenu {
     visibility: hidden;
 }
 
-/* App background */
+/* Background */
 .stApp {
     background-color: #f3f7f0;
     font-family: 'Times New Roman', serif;
@@ -55,18 +55,10 @@ header, footer, #MainMenu {
     margin-bottom: 50px;
 }
 
-/* Remove internal baseweb layers */
-div[data-baseweb="input"],
-div[data-baseweb="base-input"] {
+/* Clean baseweb background only (do NOT hide eye button) */
+div[data-baseweb="input"] {
     background: transparent !important;
-    border: none !important;
     box-shadow: none !important;
-}
-
-/* Remove password eye icon */
-button[title="Show password"],
-button[title="Hide password"] {
-    display: none !important;
 }
 
 /* Input width */
@@ -74,7 +66,7 @@ button[title="Hide password"] {
     width: 650px !important;
 }
 
-/* Input box style */
+/* Input container */
 [data-testid="stTextInput"] > div {
     background: white !important;
     border: 3px solid #c8d6cc !important;
@@ -128,7 +120,7 @@ if not st.session_state.logged_in:
     st.markdown('<div class="title">Recruiter Portal</div>', unsafe_allow_html=True)
 
     username = st.text_input("", placeholder="admin")
-    password = st.text_input("", type="password", placeholder="hr123")
+    password = st.text_input("", type="password", placeholder="hr123")  # Eye icon will show
 
     if st.button("ENTER DASHBOARD"):
         if username == "admin" and password == "hr123":
