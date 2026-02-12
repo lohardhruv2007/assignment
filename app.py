@@ -38,7 +38,7 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #E6D9B8; border-right: 1px solid #C4B490; }
     [data-testid="stSidebar"] * { color: #2C2C2C !important; }
 
-    /* Result Boxes */
+    /* Info Boxes */
     .info-box { background-color: #FFFFFF; padding: 15px; border-radius: 8px; border-left: 5px solid #FF4B4B; box-shadow: 0px 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
     
     /* CANDIDATE CARD DESIGN */
@@ -154,6 +154,7 @@ def main_tool():
         c1, c2 = st.columns(2); c1.metric("Score", f"{res['score']}/100"); c2.markdown(f"### Status: {res['reason']}")
         st.markdown(f"<div class='info-box'><b>Degree:</b> {res['education']} | <b>10th:</b> {res['10th']} | <b>12th:</b> {res['12th']}<br><b>Skills:</b> {', '.join(res['skills'])}</div>", unsafe_allow_html=True)
 
+        # --- SMART CHATBOT LOGIC ---
         st.markdown("### 💬 Chat with AI Assistant")
         for msg in st.session_state['chat_history']:
             st.markdown(f"<div class='chat-msg'><b>{'🤖 AI' if msg['role'] == 'assistant' else '👤 HR'}:</b> {msg['content']}</div>", unsafe_allow_html=True)
@@ -163,22 +164,38 @@ def main_tool():
             u_in = ci.text_input("Message", label_visibility="collapsed")
             if cb.form_submit_button("Send") and u_in:
                 st.session_state['chat_history'].append({"role": "user", "content": u_in})
-                reply = f"Candidate scored {res['score']}. Skills: {', '.join(res['skills'])}."
+                
+                # Smart Filtering
+                q = u_in.lower()
+                if "skill" in q or "tech" in q:
+                    reply = f"The candidate has the following skills: **{', '.join(res['skills'])}**."
+                elif "score" in q or "mark" in q:
+                    reply = f"The overall candidate score is **{res['score']}/100**."
+                elif "education" in q or "degree" in q or "study" in q:
+                    reply = f"Education Details: **{res['education']}**. Marks - 10th: {res['10th']}, 12th: {res['12th']}."
+                elif "name" in q:
+                    reply = f"The candidate's name (filename) is **{st.session_state['file_name']}**."
+                elif "reason" in q or "status" in q:
+                    reply = f"Status: **{res['reason']}**."
+                elif "email" in q:
+                    email_match = re.search(r'[\w\.-]+@[\w\.-]+', st.session_state['resume_text'])
+                    reply = f"Found Email: **{email_match.group(0)}**" if email_match else "No email address found."
+                else:
+                    reply = "I can specifically tell you about the candidate's **Skills, Score, Education, Name, or Status**. What would you like to know?"
+                
                 st.session_state['chat_history'].append({"role": "assistant", "content": reply})
                 st.rerun()
 
-    # --- UPDATED DATABASE VIEW ---
+    # --- DATABASE VIEW ---
     st.divider()
     st.markdown("### 🗂️ Candidate Database")
     if st.checkbox("Show Candidate Management List"):
         conn = sqlite3.connect('candidates.db')
         df = pd.read_sql_query("SELECT * FROM candidates", conn)
-        
         if df.empty:
             st.info("No data yet.")
         else:
             for i, r in df.iterrows():
-                # Card Design for each Candidate
                 st.markdown(f"""
                 <div class='candidate-card'>
                     <div class='candidate-header'>👤 {r['name']}</div>
@@ -187,17 +204,11 @@ def main_tool():
                     <div class='detail-item'><b>📊 Status:</b> {r['reason']} (Score: {r['score']})</div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Delete Button directly under the card
                 if st.button("🗑️ Delete Profile", key=f"del_{i}"):
-                    delete_candidate(r['name'])
-                    st.rerun()
-            
-            # THEME MATCHED DOWNLOAD BUTTON
+                    delete_candidate(r['name']); st.rerun()
             st.markdown("---")
             csv = df.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Download Full CSV Report", csv, "candidates_report.csv", "text/csv")
-            
         conn.close()
 
 if not st.session_state['logged_in']: login_page()
