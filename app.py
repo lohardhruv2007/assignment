@@ -1,7 +1,6 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
-import os
+import pandas as pd
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(page_title="Recruiter Portal", layout="wide")
@@ -26,7 +25,7 @@ init_db()
 st.markdown("""
 <style>
 
-/* Hide Streamlit default menu */
+/* Hide default menu */
 header, footer, #MainMenu {
     visibility: hidden;
 }
@@ -37,7 +36,7 @@ header, footer, #MainMenu {
     font-family: 'Times New Roman', serif;
 }
 
-/* Center content */
+/* Center everything */
 .main .block-container {
     padding-top: 0;
     display: flex;
@@ -55,46 +54,45 @@ header, footer, #MainMenu {
     margin-bottom: 50px;
 }
 
-/* Clean baseweb background only (do NOT hide eye button) */
+/* Fix input base */
 div[data-baseweb="input"] {
-    background: transparent !important;
-    box-shadow: none !important;
+    background-color: white !important;
+    border-radius: 18px !important;
 }
 
-/* Input width */
-[data-testid="stTextInput"] {
-    width: 650px !important;
+/* Remove blue highlight */
+input {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 /* Input container */
 [data-testid="stTextInput"] > div {
-    background: white !important;
     border: 3px solid #c8d6cc !important;
     border-radius: 18px !important;
     height: 75px !important;
     display: flex;
     align-items: center;
     padding: 0 20px;
+    width: 650px !important;
 }
 
-/* Typing field */
+/* Focus effect */
+[data-testid="stTextInput"] > div:focus-within {
+    border: 3px solid #4f6d5a !important;
+}
+
+/* Input text style */
 [data-testid="stTextInput"] input {
-    background: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
     font-size: 26px !important;
     color: #6fa88f !important;
     text-align: center;
     width: 100%;
 }
 
-/* Focus border */
-[data-testid="stTextInput"] > div:focus-within {
-    border: 3px solid #4f6d5a !important;
-}
-
-/* Button style */
+/* Button */
 .stButton > button {
     width: 650px;
     height: 75px;
@@ -120,7 +118,7 @@ if not st.session_state.logged_in:
     st.markdown('<div class="title">Recruiter Portal</div>', unsafe_allow_html=True)
 
     username = st.text_input("", placeholder="admin")
-    password = st.text_input("", type="password", placeholder="hr123")  # Eye icon will show
+    password = st.text_input("", type="password", placeholder="hr123")  # 👁 eye icon here
 
     if st.button("ENTER DASHBOARD"):
         if username == "admin" and password == "hr123":
