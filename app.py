@@ -10,27 +10,26 @@ import io
 # --- 1. PAGE CONFIG & DESIGN SETTINGS ---
 st.set_page_config(page_title="Resume Screener AI", page_icon="📄", layout="centered")
 
-# --- CUSTOM CSS (Global + Sidebar Styling) ---
+# --- CUSTOM CSS (Global + Sidebar + Candidate Card Styling) ---
 st.markdown("""
     <style>
     /* --- MAIN PAGE STYLING --- */
-    /* 1. Main Background Cream */
     .stApp {
         background-color: #FFFDD0;
     }
     
-    /* 2. General Page Text -> BLACK */
+    /* Text Elements -> BLACK */
     h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, .stText, li, div {
         color: #000000 !important;
     }
     
-    /* 3. INPUT FIELDS & LOGIN BOX */
+    /* Input Fields */
     .stTextInput > div > div > input {
         color: #000000 !important;
         background-color: #FFFFFF !important;
     }
 
-    /* 4. DRAG & DROP AREA */
+    /* File Uploader */
     [data-testid="stFileUploader"] {
         background-color: #262730; 
         border-radius: 10px;
@@ -42,7 +41,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     
-    /* 5. BUTTONS (Red with White Text) */
+    /* Buttons */
     .stButton>button {
         background-color: #FF4B4B;
         color: white !important;
@@ -51,25 +50,16 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* --- SIDEBAR STYLING (NEW) --- */
-    /* Sidebar Background -> Darker Beige (Related to Cream but distinct) */
+    /* --- SIDEBAR STYLING --- */
     [data-testid="stSidebar"] {
-        background-color: #E6D9B8; /* Darker than main page */
-        border-right: 1px solid #C4B490; /* Border separation */
+        background-color: #E6D9B8;
+        border-right: 1px solid #C4B490;
     }
-    
-    /* Sidebar Text Elements */
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2, 
-    [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] label {
-        color: #2C2C2C !important; /* Dark Grey for sidebar text */
+    [data-testid="stSidebar"] * {
+        color: #2C2C2C !important;
     }
 
     /* --- RESULT BOX STYLING --- */
-    /* Info Cards */
     .info-box {
         background-color: #FFFFFF;
         padding: 15px;
@@ -78,8 +68,6 @@ st.markdown("""
         box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
         margin-bottom: 10px;
     }
-
-    /* Raw Text Box */
     .resume-box {
         background-color: #FFFFFF;
         border: 1px solid #CCCCCC;
@@ -94,24 +82,23 @@ st.markdown("""
         white-space: pre-wrap;
     }
     
-    /* Metrics & Table Colors */
-    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
-        color: #000000 !important;
-    }
-    .dataframe {
-        color: #000000 !important;
-    }
-    .stAlert div {
-        color: #000000 !important;
+    /* --- NEW: CANDIDATE LIST CARD STYLING --- */
+    .candidate-card {
+        background-color: #FFFFFF;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        border-left: 8px solid #333; /* Default Border */
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SESSION STATE FOR LOGIN ---
+# --- 2. SESSION STATE ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
-# --- 3. LOGIN FUNCTION ---
+# --- 3. LOGIN PAGE ---
 def login_page():
     st.markdown("<h1 style='text-align: center;'>🔒 HR Login Portal</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center;'>Please enter your credentials to access the Resume Screener.</p>", unsafe_allow_html=True)
@@ -130,21 +117,18 @@ def login_page():
 
 # --- 4. MAIN APP LOGIC ---
 def main_tool():
-    # --- SIDEBAR CONTENT ---
+    # Sidebar
     with st.sidebar:
         st.title("Admin Panel")
         st.write("Welcome, HR Admin")
-        st.markdown("---") # Line separator
-        
-        # Logout Button
+        st.markdown("---")
         if st.button("Logout"):
             st.session_state['logged_in'] = False
             st.rerun()
-            
         st.markdown("---")
-        st.info("ℹ️ Note: Use the main area to upload and analyze resumes.")
+        st.info("ℹ️ Use 'Delete' to remove candidates permanently.")
 
-    # --- DATABASE FUNCTIONS ---
+    # --- DB FUNCTIONS ---
     def init_db():
         conn = sqlite3.connect('candidates.db')
         c = conn.cursor()
@@ -165,26 +149,31 @@ def main_tool():
         c = conn.cursor()
         skills_str = ", ".join(skills) if isinstance(skills, list) else str(skills)
         try:
-            c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", 
-                      (name, score, education, skills_str, reason))
+            c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", (name, score, education, skills_str, reason))
             conn.commit()
         except sqlite3.OperationalError:
             c.execute("DROP TABLE IF EXISTS candidates")
             init_db()
-            c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", 
-                      (name, score, education, skills_str, reason))
+            c.execute("INSERT INTO candidates VALUES (?, ?, ?, ?, ?)", (name, score, education, skills_str, reason))
             conn.commit()
         conn.close()
 
-    # --- TEXT EXTRACTION ---
+    # --- NEW: DELETE FUNCTION ---
+    def delete_candidate(name):
+        conn = sqlite3.connect('candidates.db')
+        c = conn.cursor()
+        c.execute("DELETE FROM candidates WHERE name=?", (name,))
+        conn.commit()
+        conn.close()
+
+    # --- PDF & ANALYZE FUNCTIONS (SAME AS BEFORE) ---
     def extract_text_from_pdf(uploaded_file):
         text = ""
         try:
             pdf_reader = PyPDF2.PdfReader(uploaded_file)
             for page in pdf_reader.pages[:3]:
                 content = page.extract_text()
-                if content:
-                    text += content + " "
+                if content: text += content + " "
             if len(text.strip()) < 50:
                 with st.spinner("⚠️ Scanned Image Detected! Extracting text via OCR..."):
                     uploaded_file.seek(0)
@@ -196,14 +185,12 @@ def main_tool():
             st.error(f"Error parsing PDF: {e}")
             return ""
 
-    # --- SCORING & PARSING ---
     def analyze_resume(text):
         res = {"education": "Unknown", "skills": [], "score": 25, "reason": "", "10th": "Not Found", "12th": "Not Found"}
         if not text:
             res["reason"] = "Rejected: File unreadable."
             return res
-
-        # Education
+        
         has_degree = False
         if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor\s*of\s*Technology|Engineering|B\.E\.|M\.C\.A|B\.C\.A', text, re.I):
             res["education"] = "B.Tech/BE/MCA"
@@ -213,7 +200,6 @@ def main_tool():
             res["education"] = "B.Sc/M.Sc"
             res["score"] += 30
 
-        # Marks
         match_10 = re.search(r'(?:10th|Class X|SSC|Matric|High School)[^0-9]*(\d{1,2}(?:\.\d+)?\s*%|\d(?:\.\d+)?\s*CGPA)', text, re.I)
         if match_10:
             res["10th"] = match_10.group(1)
@@ -223,32 +209,26 @@ def main_tool():
             res["12th"] = match_12.group(1)
             res["score"] += 2
 
-        # Skills
         skill_list = ["Python", "Java", "C\+\+", "SQL", "MySQL", "JavaScript", "HTML", "CSS", "React", "Node", "AWS", "Git", "Machine Learning", "Excel"]
         found_skills = []
         for skill in skill_list:
-            pattern = r'\b' + skill.replace("+", "\+") + r'\b'
-            if re.search(pattern, text, re.I):
+            if re.search(r'\b' + skill.replace("+", "\+") + r'\b', text, re.I):
                 found_skills.append(skill.replace("\+", "+"))
                 res["score"] += 5
         
         res["skills"] = list(set(found_skills))
         res["score"] = min(res["score"], 100)
 
-        # Decision
-        if res["score"] >= 70:
-            res["reason"] = "Selected: Strong Profile"
-        elif res["score"] >= 40:
-            res["reason"] = "Waitlist: Average Profile"
+        if res["score"] >= 70: res["reason"] = "Selected: Strong Profile"
+        elif res["score"] >= 40: res["reason"] = "Waitlist: Average Profile"
         else:
             reason_list = []
             if not has_degree: reason_list.append("No Tech Degree")
             if len(found_skills) < 2: reason_list.append("Low Skills")
             res["reason"] = "Rejected: " + ", ".join(reason_list)
-        
         return res
 
-    # --- UI EXECUTION ---
+    # --- UI LAYOUT ---
     init_db()
 
     st.title("📄 AI Resume Screener")
@@ -258,7 +238,6 @@ def main_tool():
 
     if uploaded_file is not None:
         if st.button("Analyze Resume Now"):
-            
             text = extract_text_from_pdf(uploaded_file)
             result = analyze_resume(text)
             
@@ -268,43 +247,81 @@ def main_tool():
             st.divider()
             st.subheader(f"Result for: {uploaded_file.name}")
             
-            # Metrics
             col1, col2 = st.columns(2)
             col1.metric("Overall Score", f"{result['score']}/100")
             status_color = "green" if "Selected" in result['reason'] else "orange" if "Waitlist" in result['reason'] else "red"
             col2.markdown(f"### Status: :{status_color}[{result['reason']}]")
             
             st.divider()
-
-            # Info Boxes
-            st.markdown("#### 🎓 Education & Marks Details")
+            st.markdown("#### 🎓 Education & Marks")
             c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown(f"<div class='info-box'><b>Highest Degree</b><br>{result['education']}</div>", unsafe_allow_html=True)
-            with c2:
-                st.markdown(f"<div class='info-box'><b>10th / SSC</b><br>{result['10th']}</div>", unsafe_allow_html=True)
-            with c3:
-                st.markdown(f"<div class='info-box'><b>12th / HSC</b><br>{result['12th']}</div>", unsafe_allow_html=True)
-
-            st.markdown("#### 🛠️ Technical Skills Detected")
-            st.markdown(f"<div class='info-box'>{', '.join(result['skills']) if result['skills'] else 'No specific skills detected.'}</div>", unsafe_allow_html=True)
-
-            with st.expander("📄 View Extracted Content (Raw Text)"):
+            with c1: st.markdown(f"<div class='info-box'><b>Degree</b><br>{result['education']}</div>", unsafe_allow_html=True)
+            with c2: st.markdown(f"<div class='info-box'><b>10th</b><br>{result['10th']}</div>", unsafe_allow_html=True)
+            with c3: st.markdown(f"<div class='info-box'><b>12th</b><br>{result['12th']}</div>", unsafe_allow_html=True)
+            
+            st.markdown("#### 🛠️ Skills")
+            st.markdown(f"<div class='info-box'>{', '.join(result['skills']) if result['skills'] else 'None'}</div>", unsafe_allow_html=True)
+            
+            with st.expander("📄 View Raw Text"):
                 st.markdown(f"<div class='resume-box'>{text}</div>", unsafe_allow_html=True)
 
-    # Database
+    # --- PROFESSIONAL CANDIDATE LIST (REPLACES OLD TABLE) ---
     st.divider()
-    if st.checkbox("Show All Candidates Database"):
+    st.markdown("### 🗂️ Candidate Database (HR Only)")
+
+    if st.checkbox("Show Candidate Management List"):
         conn = sqlite3.connect('candidates.db')
         try:
             df = pd.read_sql_query("SELECT * FROM candidates", conn)
-            st.dataframe(df)
-            if not df.empty:
+            
+            if df.empty:
+                st.info("Database is empty. No candidates analyzed yet.")
+            else:
+                # Loop through each candidate and create a CARD
+                for index, row in df.iterrows():
+                    
+                    # Color Coding for Border based on Status
+                    status_color = "#4CAF50" if "Selected" in row['reason'] else "#FF9800" if "Waitlist" in row['reason'] else "#F44336"
+                    
+                    # Card Container
+                    with st.container():
+                        # Custom HTML for Card Look
+                        st.markdown(f"""
+                        <div class="candidate-card" style="border-left: 8px solid {status_color};">
+                            <h4 style="margin:0; color:black;">👤 {row['name']}</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Data Columns inside the Card
+                        c1, c2, c3, c4 = st.columns([2, 3, 2, 1])
+                        
+                        with c1:
+                            st.caption("Score")
+                            st.write(f"**{row['score']}/100**")
+                        
+                        with c2:
+                            st.caption("Status")
+                            st.write(f"{row['reason']}")
+                        
+                        with c3:
+                            with st.expander("View Details"):
+                                st.write(f"**Edu:** {row['education']}")
+                                st.write(f"**Skills:** {row['skills']}")
+                        
+                        with c4:
+                            # Delete Button for this specific row
+                            if st.button("🗑️ Delete", key=f"del_{index}"):
+                                delete_candidate(row['name'])
+                                st.rerun() # Refresh page immediately
+                                
+                # Download CSV Option (at the bottom)
                 csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button("Download CSV", csv, "candidates.csv", "text/csv")
-        except:
-            st.write("Database is empty.")
-        conn.close()
+                st.download_button("📥 Download Full CSV", csv, "candidates.csv", "text/csv")
+                
+        except Exception as e:
+            st.error(f"Error loading database: {e}")
+        finally:
+            conn.close()
 
 # --- 5. CONTROL FLOW ---
 if not st.session_state['logged_in']:
