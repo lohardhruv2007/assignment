@@ -132,4 +132,4 @@ def analyze_resume(text):
     for skill in skill_list:
         # Clean regex to match exact words
         pattern = r'\b' + skill.replace("+", "\+") + r'\b'
-        if re.search(pattern, text, re.I)
+        if re.search(pattern, text, re.I):
