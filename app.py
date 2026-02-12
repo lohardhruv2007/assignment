@@ -138,7 +138,7 @@ def main_tool():
         return res
 
     init_db()
-    st.title("📄 AI Resume Screener")
+    st.title("🫡Mufat ka AI naam mera, par kaam bada hi tight,Resume agar strong hua, to job lagwa du overnight.")
     uploaded_file = st.file_uploader("Upload PDF Resume", type=["pdf"])
 
     if uploaded_file and st.button("Analyze Resume Now"):
