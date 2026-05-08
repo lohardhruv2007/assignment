@@ -4,103 +4,99 @@ import sqlite3
 import os
 from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 
-# Database Initialization
+# Initializing DB
 init_db()
 
-# Sidebar ko hamesha khula rakhne ke liye settings
-st.set_page_config(page_title="AI Recruiter Pro", layout="wide", initial_sidebar_state="expanded")
+# Page Config: Force sidebar state to expanded
+st.set_page_config(
+    page_title="TalentFlow AI Pro",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- CLEAN TECH CSS (Sidebar ko hamesha dikhane ke liye) ---
+# --- MINIMALIST CSS (Will NOT hide Sidebar) ---
 st.markdown("""
 <style>
-    /* Sirf Header aur Footer hide kiye hain, Sidebar ko nahi chheda */
+    /* Hide Only Header/Footer */
     [data-testid="stHeader"], footer {display: none !important;}
     
-    .stApp { background-color: #0e1117 !important; color: #f8fafc; }
+    .stApp { background-color: #0e1117 !important; color: white; }
     
     .portal-heading {
         font-size: 45px !important; font-weight: 800 !important;
         color: #10b981 !important; text-align: center; margin-bottom: 20px;
     }
-
-    /* Container adjustments */
-    .block-container { padding-top: 1rem !important; }
-
-    /* Input Boxes */
-    div[data-baseweb="input"] { background-color: #1e293b !important; border-radius: 8px; }
-    input { color: #f8fafc !important; }
-    
-    /* Buttons */
-    .stButton > button {
-        width: 100%; background-color: #10b981; color: #000;
-        font-weight: 700; border-radius: 8px; height: 50px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Navigation Session State
-if 'auth' not in st.session_state: st.session_state['auth'] = False
-if 'page' not in st.session_state: st.session_state['page'] = "Screener"
+# Login logic using session state
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
 
-# --- LOGIN SCREEN ---
-if not st.session_state['auth']:
+# --- AUTHENTICATION ---
+if not st.session_state['authenticated']:
     st.markdown('<div class="portal-heading">System Access</div>', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        u = st.text_input("User ID", placeholder="admin")
-        p = st.text_input("Access Key", type="password", placeholder="hr123")
-        if st.button("AUTHENTICATE"):
+    with st.form("login_form"):
+        u = st.text_input("User ID")
+        p = st.text_input("Access Key", type="password")
+        if st.form_submit_button("AUTHENTICATE"):
             if u == "admin" and p == "hr123":
-                st.session_state['auth'] = True
+                st.session_state['authenticated'] = True
                 st.rerun()
             else:
                 st.error("Invalid Credentials")
 
-# --- MAIN DASHBOARD (Login ke baad hamesha dikhegi) ---
+# --- MAIN DASHBOARD (Visible Only After Auth) ---
 else:
-    # YE SIDEBAR AB HAMESHA DIKHEGA
-    with st.sidebar:
-        st.markdown("<h1 style='color:#10b981;'>Admin Panel</h1>", unsafe_allow_html=True)
-        st.write("---")
-        if st.button("🔍 AI Batch Screener"): 
-            st.session_state['page'] = "Screener"
-            st.rerun()
-        if st.button("📊 Talent Database"): 
-            st.session_state['page'] = "Database"
-            st.rerun()
-        if st.button("🤖 Recruitment Chatbot"): 
-            st.session_state['page'] = "Chatbot"
-            st.rerun()
-        st.write("---")
-        if st.button("🚪 Logout"):
-            st.session_state['auth'] = False
-            st.rerun()
+    # YE SIDEBAR AB NAHI GAYAB HOGA
+    st.sidebar.title("🌿 TalentFlow AI")
+    st.sidebar.write("---")
+    
+    # Navigation using Sidebar Radio (Bulletproof)
+    choice = st.sidebar.radio(
+        "NAVIGATION MENU",
+        ["AI Batch Screener", "Talent Database", "AI Hiring Bot"]
+    )
+    
+    st.sidebar.write("---")
+    if st.sidebar.button("Logout"):
+        st.session_state['authenticated'] = False
+        st.rerun()
 
-    # Page 1: Screener (PDF Upload)
-    if st.session_state['page'] == "Screener":
+    # 1. SCREENER PAGE
+    if choice == "AI Batch Screener":
         st.markdown('<div class="portal-heading">Batch AI Analysis</div>', unsafe_allow_html=True)
-        files = st.file_uploader("Upload Resumes (PDF Only)", type="pdf", accept_multiple_files=True)
-        if files and st.button("EXECUTE SCAN"):
-            with st.status("AI Analyzing..."):
-                for f in files:
-                    text = extract_text_from_pdf(f)
-                    data = analyze_resume(text)
-                    save_candidate(f.name, data["score"], data["education"], data["notice_period"], ", ".join(data["skills"]), data["reason"])
-            st.success("Batch Analysis Completed!")
+        files = st.file_uploader("Upload PDF Resumes", type="pdf", accept_multiple_files=True)
+        if files and st.button("RUN SCAN"):
+            for f in files:
+                text = extract_text_from_pdf(f)
+                res = analyze_resume(text)
+                save_candidate(f.name, res["score"], res["education"], res["notice_period"], ", ".join(res["skills"]), res["reason"])
+            st.success("Analysis Finished.")
 
-    # Page 2: Database
-    elif st.session_state['page'] == "Database":
-        st.markdown('<div class="portal-heading">Candidate Rankings</div>', unsafe_allow_html=True)
+    # 2. DATABASE PAGE
+    elif choice == "Talent Database":
+        st.markdown('<div class="portal-heading">Talent Database</div>', unsafe_allow_html=True)
         conn = sqlite3.connect('candidates.db')
         df = pd.read_sql_query("SELECT * FROM candidates ORDER BY score DESC", conn)
         st.dataframe(df, use_container_width=True)
         conn.close()
 
-    # Page 3: Chatbot
-    elif st.session_state['page'] == "Chatbot":
-        st.markdown('<div class="portal-heading">AI Hiring Assistant</div>', unsafe_allow_html=True)
-        st.chat_message("assistant").write("Hello! I can help you find the best B.Tech candidates. Ask me anything.")
-        prompt = st.chat_input("Ask a question...")
-        if prompt:
-            st.chat_message("user").write(prompt)
-            st.chat_message("assistant").write(f"Analyzing candidates based on: '{prompt}'.")
+    # 3. CHATBOT PAGE
+    elif choice == "AI Hiring Bot":
+        st.markdown('<div class="portal-heading">HR AI Assistant</div>', unsafe_allow_html=True)
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("Ask about B.Tech candidates..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            with st.chat_message("assistant"):
+                response = f"Analyzing candidates for your query: '{prompt}'."
+                st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
