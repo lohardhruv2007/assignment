@@ -7,35 +7,22 @@ from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 # Database Initialization
 init_db()
 
-# Force Sidebar to be visible
+# Force Sidebar to expand natively
 st.set_page_config(
     page_title="TalentFlow AI Pro",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- PROFESSIONAL DARK TECH CSS ---
+# --- SAFE CSS (NO HIDING CRITICAL ELEMENTS) ---
 st.markdown("""
 <style>
-    /* Hide Only Header/Footer */
-    [data-testid="stHeader"], footer {display: none !important;}
-    
+    /* Bas background aur colors set kiye hain, koi element hide nahi kiya */
     .stApp { background-color: #0e1117 !important; color: #f8fafc; }
     
     .portal-heading {
         font-size: 50px !important; font-weight: 800 !important;
         color: #10b981 !important; text-align: center; margin-bottom: 25px;
-    }
-
-    /* Professional Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #161e2e !important;
-        border-right: 1px solid #1f2937;
-    }
-
-    /* Glass Effect Cards */
-    .stAlert, .stDataFrame {
-        border-radius: 12px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -44,7 +31,7 @@ st.markdown("""
 if 'auth' not in st.session_state: st.session_state['auth'] = False
 if 'messages' not in st.session_state: st.session_state['messages'] = []
 
-# --- 1. SIDEBAR (Hamesha Visible) ---
+# --- 1. SIDEBAR (Safe & Native) ---
 with st.sidebar:
     st.markdown("<h1 style='color:#10b981;'>Admin Panel</h1>", unsafe_allow_html=True)
     st.write("---")
@@ -75,7 +62,6 @@ if not st.session_state['auth']:
                     st.rerun()
                 else:
                     st.error("Invalid Credentials")
-    st.warning("Please login to access the dashboard tools.")
 
 # --- 3. MAIN CONTENT (Only after Login) ---
 else:
@@ -116,5 +102,6 @@ else:
             with st.chat_message("user"):
                 st.markdown(prompt)
             with st.chat_message("assistant"):
-                response = f"AI Analysis for: '{prompt}'. Based on B.Tech criteria, prioritize candidates with high Python/SQL scores."
+                response = f"AI Analysis for: '{prompt}'. Based on technical criteria, prioritize candidates with high Python/SQL scores."
                 st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
