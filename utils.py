@@ -1,7 +1,6 @@
 import PyPDF2
 import re
 import sqlite3
-import os
 
 def init_db():
     conn = sqlite3.connect('candidates.db')
@@ -21,25 +20,20 @@ def save_candidate(name, score, education, notice, skills, reason):
 def extract_text_from_pdf(file):
     try:
         pdf_reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in pdf_reader.pages:
-            content = page.extract_text()
-            if content: text += content + " "
+        text = "".join([page.extract_text() + " " for page in pdf_reader.pages])
         return text.strip()
-    except Exception:
+    except:
         return ""
 
 def analyze_resume(text):
-    # Specialized for B.Tech students
-    res = {"education": "Non-Tech", "notice_period": "90 Days", "skills": [], "score": 20, "reason": "Not Shortlisted"}
-    if re.search(r'B\.?\s*T\s*e\s*c\s*h|Bachelor|Engineering', text, re.I):
-        res["education"] = "B.Tech/Engineering"
-        res["score"] += 50
-    tech_skills = ["Python", "Java", "SQL", "React", "C++", "JavaScript", "PHP", "MySQL"]
+    res = {"education": "Other", "notice_period": "Immediate", "skills": [], "score": 20, "reason": "Review Required"}
+    if re.search(r'B\.?\s*T\s*e\s*c\s*h|Engineering|Technology', text, re.I):
+        res["education"] = "B.Tech Graduate"
+        res["score"] += 40
+    tech_skills = ["Python", "Java", "SQL", "React", "C++", "JavaScript", "Node", "AWS"]
     found = [s for s in tech_skills if re.search(r'\b' + re.escape(s) + r'\b', text, re.I)]
     res["skills"] = found
     res["score"] += (len(found) * 10)
     res["score"] = min(res["score"], 100)
-    if res["score"] >= 70: res["reason"] = "Highly Recommended"
-    elif res["score"] >= 40: res["reason"] = "Waitlisted"
+    res["reason"] = "Shortlisted" if res["score"] >= 70 else "Rejected"
     return res
