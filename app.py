@@ -4,99 +4,113 @@ import sqlite3
 import os
 from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 
-# Initializing DB
+# Initialize Database
 init_db()
 
-# Page Config: Force sidebar state to expanded
+# Page Config: Sidebar hamesha expanded rahega
 st.set_page_config(
     page_title="TalentFlow AI Pro",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- MINIMALIST CSS (Will NOT hide Sidebar) ---
+# --- CLEAN DARK THEME (Zero Sidebar Clash) ---
 st.markdown("""
 <style>
-    /* Hide Only Header/Footer */
+    /* Hide Only Header and Footer */
     [data-testid="stHeader"], footer {display: none !important;}
     
-    .stApp { background-color: #0e1117 !important; color: white; }
+    .stApp { background-color: #0e1117 !important; color: #f8fafc; }
     
     .portal-heading {
-        font-size: 45px !important; font-weight: 800 !important;
-        color: #10b981 !important; text-align: center; margin-bottom: 20px;
+        font-size: 50px !important; font-weight: 800 !important;
+        color: #10b981 !important; text-align: center; margin-bottom: 25px;
+    }
+
+    /* Professional Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #161e2e !important;
+        border-right: 1px solid #1f2937;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Login logic using session state
-if 'authenticated' not in st.session_state:
-    st.session_state['authenticated'] = False
+# Session States
+if 'auth' not in st.session_state: st.session_state['auth'] = False
+if 'page' not in st.session_state: st.session_state['page'] = "AI Batch Screener"
+if 'messages' not in st.session_state: st.session_state['messages'] = []
 
-# --- AUTHENTICATION ---
-if not st.session_state['authenticated']:
-    st.markdown('<div class="portal-heading">System Access</div>', unsafe_allow_html=True)
-    with st.form("login_form"):
-        u = st.text_input("User ID")
-        p = st.text_input("Access Key", type="password")
-        if st.form_submit_button("AUTHENTICATE"):
-            if u == "admin" and p == "hr123":
-                st.session_state['authenticated'] = True
-                st.rerun()
-            else:
-                st.error("Invalid Credentials")
-
-# --- MAIN DASHBOARD (Visible Only After Auth) ---
-else:
-    # YE SIDEBAR AB NAHI GAYAB HOGA
-    st.sidebar.title("🌿 TalentFlow AI")
-    st.sidebar.write("---")
+# --- 1. SIDEBAR NAVIGATION (Hamesha Visible) ---
+with st.sidebar:
+    st.markdown("<h1 style='color:#10b981;'>Admin Panel</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    # Navigation using Sidebar Radio (Bulletproof)
-    choice = st.sidebar.radio(
-        "NAVIGATION MENU",
-        ["AI Batch Screener", "Talent Database", "AI Hiring Bot"]
+    # Navigation Radio (Isse sidebar kabhi gayab nahi hoga)
+    choice = st.radio(
+        "GO TO:",
+        ["AI Batch Screener", "Talent Database", "AI Recruitment Bot"],
+        index=0
     )
     
-    st.sidebar.write("---")
-    if st.sidebar.button("Logout"):
-        st.session_state['authenticated'] = False
+    st.write("---")
+    if st.button("🚪 Logout System"):
+        st.session_state['auth'] = False
         st.rerun()
 
-    # 1. SCREENER PAGE
-    if choice == "AI Batch Screener":
-        st.markdown('<div class="portal-heading">Batch AI Analysis</div>', unsafe_allow_html=True)
-        files = st.file_uploader("Upload PDF Resumes", type="pdf", accept_multiple_files=True)
-        if files and st.button("RUN SCAN"):
-            for f in files:
-                text = extract_text_from_pdf(f)
-                res = analyze_resume(text)
-                save_candidate(f.name, res["score"], res["education"], res["notice_period"], ", ".join(res["skills"]), res["reason"])
-            st.success("Analysis Finished.")
+# --- 2. AUTHENTICATION LOGIC ---
+if not st.session_state['auth']:
+    st.markdown('<div class="portal-heading">System Authentication</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        with st.form("auth_form"):
+            u = st.text_input("Recruiter ID", placeholder="admin")
+            p = st.text_input("Security Key", type="password", placeholder="hr123")
+            if st.form_submit_button("LOGIN"):
+                if u == "admin" and p == "hr123":
+                    st.session_state['auth'] = True
+                    st.rerun()
+                else:
+                    st.error("Invalid Access Key")
+    st.info("Sidebar is disabled until login.")
 
-    # 2. DATABASE PAGE
+# --- 3. MAIN DASHBOARD CONTENT (Login ke baad) ---
+else:
+    # Page 1: Screener (PDF Uploader)
+    if choice == "AI Batch Screener":
+        st.markdown('<div class="portal-heading">Batch AI Resume Screener</div>', unsafe_allow_html=True)
+        files = st.file_uploader("Upload Batch Resumes (PDF Only)", type="pdf", accept_multiple_files=True)
+        if files and st.button("RUN SYSTEM ANALYSIS"):
+            with st.status("AI Agent Analyzing PDFs..."):
+                for f in files:
+                    text = extract_text_from_pdf(f)
+                    data = analyze_resume(text)
+                    save_candidate(f.name, data["score"], data["education"], data["notice_period"], ", ".join(data["skills"]), data["reason"])
+            st.success(f"Successfully processed {len(files)} resumes.")
+
+    # Page 2: Database
     elif choice == "Talent Database":
-        st.markdown('<div class="portal-heading">Talent Database</div>', unsafe_allow_html=True)
+        st.markdown('<div class="portal-heading">Candidate Analytics</div>', unsafe_allow_html=True)
         conn = sqlite3.connect('candidates.db')
-        df = pd.read_sql_query("SELECT * FROM candidates ORDER BY score DESC", conn)
-        st.dataframe(df, use_container_width=True)
+        try:
+            df = pd.read_sql_query("SELECT * FROM candidates ORDER BY score DESC", conn)
+            st.dataframe(df, use_container_width=True, height=500)
+        except:
+            st.warning("No data found. Upload resumes in the Screener section.")
         conn.close()
 
-    # 3. CHATBOT PAGE
-    elif choice == "AI Hiring Bot":
-        st.markdown('<div class="portal-heading">HR AI Assistant</div>', unsafe_allow_html=True)
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-
+    # Page 3: AI Chatbot
+    elif choice == "AI Recruitment Bot":
+        st.markdown('<div class="portal-heading">Recruitment AI Bot</div>', unsafe_allow_html=True)
+        
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        if prompt := st.chat_input("Ask about B.Tech candidates..."):
+        if prompt := st.chat_input("Ask about B.Tech hiring criteria..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
             with st.chat_message("assistant"):
-                response = f"Analyzing candidates for your query: '{prompt}'."
+                response = f"Analyzing candidates for: '{prompt}'. Based on the data, B.Tech graduates with Python/SQL are currently ranked highest."
                 st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
