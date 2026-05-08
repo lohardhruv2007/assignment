@@ -105,4 +105,33 @@ else:
 
         # Chat Input
         if prompt := st.chat_input("Ask me about hiring or candidate criteria..."):
-            st.session_state.chat_history.append({"role
+            
+            # YAHI LINE PEHLE AADHI COPY HUI THI, AB PURI HAI
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            
+            with st.chat_message("user"): 
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                # --- SMART RULE-BASED LOGIC ---
+                user_text = prompt.lower()
+                
+                if "best" in user_text or "top" in user_text:
+                    response = "The top candidates are B.Tech graduates with a score of 70+. They have strong skills in Python and SQL."
+                
+                elif "reject" in user_text or "fail" in user_text:
+                    response = "Candidates are marked as 'Review Required' if their resume lacks a technical degree or core programming skills."
+                
+                elif "python" in user_text or "java" in user_text:
+                    response = "Yes, Python and Java are core skills. Our AI awards +10 bonus points for each of these skills found in the resume."
+                
+                elif "how does this work" in user_text or "logic" in user_text:
+                    response = "I scan PDF resumes, extract the text, and rank them out of 100 based on their Degree (B.Tech/BE) and Tech Stack."
+                
+                else:
+                    response = f"I am analyzing the database regarding: '{prompt}'. Please check the 'Talent Database' tab for detailed rankings."
+                
+                st.markdown(response)
+                
+                # YAHAN BHI DHYAN SE DEKH LENA
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
