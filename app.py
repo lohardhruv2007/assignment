@@ -1,107 +1,86 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-import os
 from utils import extract_text_from_pdf, analyze_resume, init_db, save_candidate
 
-# Database Initialization
 init_db()
+st.set_page_config(page_title="TalentFlow AI Pro", layout="wide", initial_sidebar_state="expanded")
 
-# Force Sidebar to expand natively
-st.set_page_config(
-    page_title="TalentFlow AI Pro",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# --- SAFE CSS (NO HIDING CRITICAL ELEMENTS) ---
+# --- TECH THEME CSS ---
 st.markdown("""
 <style>
-    /* Bas background aur colors set kiye hain, koi element hide nahi kiya */
-    .stApp { background-color: #0e1117 !important; color: #f8fafc; }
-    
+    .stApp { background-color: #0e1117 !important; color: #f8fafc; font-family: 'Inter', sans-serif; }
     .portal-heading {
-        font-size: 50px !important; font-weight: 800 !important;
-        color: #10b981 !important; text-align: center; margin-bottom: 25px;
+        font-size: 45px !important; font-weight: 800 !important;
+        color: #10b981 !important; text-align: center; margin-bottom: 20px;
     }
+    .stSidebar { background-color: #161e2e !important; border-right: 1px solid #1f2937; }
+    div[data-baseweb="input"] { background-color: #1e293b !important; border-radius: 8px; }
+    .stButton > button { width: 100%; background-color: #10b981; color: #000; font-weight: 700; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
 # Session States
 if 'auth' not in st.session_state: st.session_state['auth'] = False
-if 'messages' not in st.session_state: st.session_state['messages'] = []
+if 'page' not in st.session_state: st.session_state['page'] = "AI Screener"
+if 'chat_history' not in st.session_state: st.session_state['chat_history'] = []
 
-# --- 1. SIDEBAR (Safe & Native) ---
-with st.sidebar:
-    st.markdown("<h1 style='color:#10b981;'>Admin Panel</h1>", unsafe_allow_html=True)
-    st.write("---")
-    
-    # Navigation Choice
-    choice = st.radio(
-        "GO TO:",
-        ["AI Batch Screener", "Talent Database", "AI Recruitment Bot"],
-        index=0
-    )
-    
-    st.write("---")
-    if st.button("🚪 Logout System"):
-        st.session_state['auth'] = False
-        st.rerun()
-
-# --- 2. AUTHENTICATION (admin/hr123) ---
+# --- LOGIN (admin / hr123) ---
 if not st.session_state['auth']:
-    st.markdown('<div class="portal-heading">System Authentication</div>', unsafe_allow_html=True)
+    st.markdown('<div class="portal-heading">System Access</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        with st.form("login_form"):
-            u = st.text_input("Recruiter ID", placeholder="admin")
-            p = st.text_input("Security Key", type="password", placeholder="hr123")
-            if st.form_submit_button("LOGIN"):
-                if u == "admin" and p == "hr123":
-                    st.session_state['auth'] = True
-                    st.rerun()
-                else:
-                    st.error("Invalid Credentials")
+        u = st.text_input("User ID")
+        p = st.text_input("Access Key", type="password")
+        if st.button("LOGIN"):
+            if u == "admin" and p == "hr123":
+                st.session_state['auth'] = True
+                st.rerun()
+            else: st.error("Access Denied")
 
-# --- 3. MAIN CONTENT (Only after Login) ---
+# --- LOGGED IN CONTENT ---
 else:
-    # PAGE 1: SCREENER (PDF Uploader)
-    if choice == "AI Batch Screener":
-        st.markdown('<div class="portal-heading">AI Batch Screener</div>', unsafe_allow_html=True)
-        files = st.file_uploader("Upload Resumes (PDF Only)", type="pdf", accept_multiple_files=True)
-        if files and st.button("EXECUTE ANALYSIS"):
-            with st.status("AI Analyzing Resumes..."):
-                for f in files:
-                    text = extract_text_from_pdf(f)
-                    data = analyze_resume(text)
-                    save_candidate(f.name, data["score"], data["education"], data["notice_period"], ", ".join(data["skills"]), data["reason"])
-            st.success(f"Processed {len(files)} candidates successfully!")
+    with st.sidebar:
+        st.markdown("<h2 style='color:#10b981;'>Admin Menu</h2>", unsafe_allow_html=True)
+        if st.button("🔍 AI Resume Screener"): st.session_state['page'] = "Screener"
+        if st.button("📊 Talent Pool"): st.session_state['page'] = "Database"
+        if st.button("🤖 AI HR Chatbot"): st.session_state['page'] = "Chatbot"
+        st.write("---")
+        if st.button("Logout"): 
+            st.session_state['auth'] = False
+            st.rerun()
 
-    # PAGE 2: DATABASE
-    elif choice == "Talent Database":
+    if st.session_state['page'] == "Screener":
+        st.markdown('<div class="portal-heading">Batch AI Screener</div>', unsafe_allow_html=True)
+        files = st.file_uploader("Upload PDF Resumes", type="pdf", accept_multiple_files=True)
+        if files and st.button("RUN AI SCAN"):
+            for f in files:
+                t = extract_text_from_pdf(f)
+                r = analyze_resume(t)
+                save_candidate(f.name, r["score"], r["education"], "30 Days", ", ".join(r["skills"]), r["reason"])
+            st.success("Batch Analysis Complete!")
+
+    elif st.session_state['page'] == "Database":
         st.markdown('<div class="portal-heading">Candidate Rankings</div>', unsafe_allow_html=True)
         conn = sqlite3.connect('candidates.db')
-        try:
-            df = pd.read_sql_query("SELECT * FROM candidates ORDER BY score DESC", conn)
-            st.dataframe(df, use_container_width=True, height=500)
-        except:
-            st.info("No data yet. Upload resumes in the Screener section.")
+        df = pd.read_sql_query("SELECT * FROM candidates ORDER BY score DESC", conn)
+        st.dataframe(df, use_container_width=True)
         conn.close()
 
-    # PAGE 3: AI CHATBOT
-    elif choice == "AI Recruitment Bot":
-        st.markdown('<div class="portal-heading">Hiring AI Bot</div>', unsafe_allow_html=True)
+    # --- AI CHATBOT SECTION ---
+    elif st.session_state['page'] == "Chatbot":
+        st.markdown('<div class="portal-heading">AI Hiring Assistant</div>', unsafe_allow_html=True)
         
-        # Chat History
-        for msg in st.session_state.messages:
+        # Display Chat History
+        for msg in st.session_state.chat_history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Ask about candidate scores..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+        if prompt := st.chat_input("Ask me about hiring or candidates..."):
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            with st.chat_message("user"): st.markdown(prompt)
+
             with st.chat_message("assistant"):
-                response = f"AI Analysis for: '{prompt}'. Based on technical criteria, prioritize candidates with high Python/SQL scores."
+                response = f"Scanning Talent Pool for: '{prompt}'. I suggest prioritizing B.Tech graduates with Python/SQL skills for this role."
                 st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
